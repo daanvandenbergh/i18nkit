@@ -72,7 +72,8 @@ export class I18n<L extends string> {
      * Build an i18n instance.
      *
      * @param config - the locale set and options (see {@link I18nConfig}).
-     * @throws Error when `locales` is empty or `default` is not one of the configured locales.
+     * @throws Error when `locales` is empty, `default` is not one of the configured locales, or two
+     *     locales resolve to the same case-insensitive `htmlLang`.
      */
     constructor(config: I18nConfig<L>) {
         const codes = Object.keys(config.locales) as L[];
@@ -89,13 +90,29 @@ export class I18n<L extends string> {
             const htmlLang = info.htmlLang ?? code;
             return { code, label: info.label, htmlLang, locale: info.locale ?? htmlLang };
         });
+        // URL routing matches locale segments case-insensitively (`/en-gb` resolves to `en-GB`), so
+        // two locales whose htmlLang differ only by case would share one URL prefix and leave one
+        // locale unreachable by URL. Fail fast at construction rather than fail silently at runtime.
+        const seenHtmlLang = new Map<string, L>();
+        for (const entry of this.list) {
+            const key = entry.htmlLang.toLowerCase();
+            const clash = seenHtmlLang.get(key);
+            if (clash !== undefined) {
+                throw new Error(
+                    `I18n: locales "${clash}" and "${entry.code}" both resolve to htmlLang "${key}" (case-insensitive); each locale needs a distinct htmlLang.`,
+                );
+            }
+            seenHtmlLang.set(key, entry.code);
+        }
         this.locales = Object.fromEntries(this.list.map((entry) => [entry.code, entry])) as Record<
             L,
             ResolvedLocale<L>
         >;
         this.default = config.default;
         this.cookie = config.cookie ?? DEFAULT_COOKIE;
-        this.origin = config.origin;
+        // Strip trailing slashes so a caller passing `origin: "https://x.com/"` does not yield a
+        // double slash in canonical/hreflang URLs (`https://x.com//pricing`), which harms SEO.
+        this.origin = config.origin?.replace(/\/+$/, "");
         this.nonLocalizedPrefixes = config.nonLocalizedPrefixes ?? [];
         this.strategy = config.strategy ?? "prefix-except-default";
         this.#codes = codes;

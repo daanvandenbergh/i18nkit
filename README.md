@@ -38,7 +38,7 @@ npm install @daanvandenbergh/i18nkit
 
 i18nkit ships an agent skill, **`i18nkit-sweep`**, that sweeps your source for user-facing strings
 that bypass the type-safe system (and, if you use `@daanvandenbergh/blogkit`, checks every post has a
-translation and hero image for each locale). It is report-only by default; run it with `/i18nkit-sweep`.
+translation and its own localized hero for each locale). It is report-only by default; run it with `/i18nkit-sweep`.
 
 Wire it into Claude Code with a **symlink**, so it tracks the installed package version - an
 `npm update` keeps the skill current, with no copy to re-sync:
@@ -221,6 +221,13 @@ i18n.hreflangAlternates("/pricing", "nl");  // { canonical, languages: { en, nl,
 Pass `strategy: "prefix-all"` to prefix every locale, including the default -
 `i18n.localizeHref("/pricing", "en")` then returns `"/en/pricing"`, so no locale lives at a bare URL.
 The default, `"prefix-except-default"`, keeps the default locale at bare URLs as shown above.
+
+**URL casing.** If a locale's `htmlLang` carries a region or script subtag (`en-GB`, `pt-BR`,
+`zh-Hant`), the generated URL prefix is lowercased - `htmlLang: "en-GB"` produces `/en-gb/pricing`,
+the conventional casing for URLs - while `htmlLangFor(locale)` still returns `"en-GB"` for the
+`<html lang>` attribute and hreflang keys. Segment parsing (`localeForSegment`, `stripLocalePrefix`)
+is case-insensitive, so an inbound `/en-GB/…` or `/en-gb/…` both resolve. Plain lowercase primary
+subtags (`en`, `nl`, `de`) are unaffected.
 
 ### Middleware
 

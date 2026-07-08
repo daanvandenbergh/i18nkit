@@ -60,6 +60,28 @@ describe("construction", () => {
                 }),
         ).toThrow(/default locale/);
     });
+
+    it("throws when two locales resolve to the same case-insensitive htmlLang", () => {
+        // Routing matches segments case-insensitively, so `EN` and `en` would share the `/en` URL
+        // prefix and leave one locale unreachable - reject the config up front.
+        expect(
+            () =>
+                new I18n({
+                    locales: { a: { label: "A", htmlLang: "EN" }, b: { label: "B", htmlLang: "en" } },
+                    default: "a",
+                }),
+        ).toThrow(/case-insensitive/);
+    });
+
+    it("strips a trailing slash from origin so URLs have no double slash", () => {
+        const j = new I18n({
+            locales: { en: { label: "E" } },
+            default: "en",
+            origin: "https://example.com/",
+        });
+        expect(j.origin).toBe("https://example.com");
+        expect(j.hreflangAlternates("/pricing", "en").canonical).toBe("https://example.com/pricing");
+    });
 });
 
 describe("metadata helpers", () => {

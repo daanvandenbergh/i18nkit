@@ -1,6 +1,6 @@
 ---
 name: i18nkit-add-locale
-description: Add one new locale to a project already built on i18nkit and carry every translation through - the compiler-guided counterpart to i18nkit-sweep. Adding the code to `new I18n({ locales })` grows the locale union `L`, so `tsc` turns every `defineTextCatalog` / `defineText` / `LanguageText` entry still missing that locale into a compile error: an exhaustive, exact worklist of what to translate, handed to you by the compiler. This skill edits the I18n config, then translates every erroring entry - preserving interpolation params, `${...}` placeholders, split rich-text fragments, and leaving brand / `i18n.uniform` words untouched - fanning the work across parallel agents when there are many, and loops `tsc` to green. It also covers what the compiler cannot see: for `@daanvandenbergh/blogkit` it enumerates and creates the same-slug translated post for every default-locale article (front-matter + body, hero preserved), and it hunts hardcoded locale lists (static params, hreflang, sitemaps, middleware) that name codes literally. Use this whenever the user wants to add, support, or ship a new language or locale, translate the whole site / app into another language, internationalize into German / French / Spanish / Japanese / etc., launch in a new country or market, or asks "how do we add <language>?" - even if they never name i18nkit. It EXTENDS an already-wrapped codebase to a new locale; if bare untranslated strings might still exist, run i18nkit-sweep FIRST so the compiler can see them, then this. Takes the new locale code and an optional endonym label.
+description: Add one new locale to a project already built on i18nkit and carry every translation through - the compiler-guided counterpart to i18nkit-sweep. Adding the code to `new I18n({ locales })` grows the locale union `L`, so `tsc` turns every `defineTextCatalog` / `defineText` / `LanguageText` entry still missing that locale into a compile error: an exhaustive, exact worklist of what to translate, handed to you by the compiler. This skill edits the I18n config, then translates every erroring entry - preserving interpolation params, `${...}` placeholders, split rich-text fragments, and leaving brand / `i18n.uniform` words untouched - fanning the work across parallel agents when there are many, and loops `tsc` to green. It also covers what the compiler cannot see: for `@daanvandenbergh/blogkit` it enumerates and creates the translated body beside the default in each post's per-slug folder (front-matter + body), extends the post's single `hero.js` i18n map with the new locale (its hero rendered via blogkit's hero skill), and it hunts hardcoded locale lists (static params, hreflang, sitemaps, middleware) that name codes literally. Use this whenever the user wants to add, support, or ship a new language or locale, translate the whole site / app into another language, internationalize into German / French / Spanish / Japanese / etc., launch in a new country or market, or asks "how do we add <language>?" - even if they never name i18nkit. It EXTENDS an already-wrapped codebase to a new locale; if bare untranslated strings might still exist, run i18nkit-sweep FIRST so the compiler can see them, then this. Takes the new locale code and an optional endonym label.
 user-invokable: true
 argument-hint: "<locale> [endonym]   e.g. de  |  fr \"Français\"  |  pt-BR \"Português (Brasil)\""
 ---
@@ -125,21 +125,23 @@ broke a template). Green `tsc` = every catalog entry provably covers the new loc
 ## Phase 4 - Close the compiler-invisible gaps
 
 Run the bundled scanner over the source root (it needs the new code, and the existing codes + blog
-`contentDir`/`extension` from the config if the defaults differ):
+`contentDir` / `defaultLocale` / `extension` from the config if the defaults differ):
 
 ```bash
-EXISTING_CODES="en nl" CONTENT_DIR="./blog" <skill-dir>/scripts/scan.sh <newcode> "<src or .>"
+EXISTING_CODES="en nl" CONTENT_DIR="./blog" DEFAULT_CODE="en" <skill-dir>/scripts/scan.sh <newcode> "<src or .>"
 ```
 
 It prints two lead sections - confirm each by reading, none is a verdict:
-1. **BLOGKIT POST WORKLIST** - for each default-locale post, the `<contentDir>/<newcode>/<slug>` file
-   that must exist, and whether the base post carries a hero `image:`. If blogkit is in use: add the
-   new locale to the `Blog` config's `locales[]`, then create each listed post - **same slug**,
-   front-matter human fields + body translated per translation-rules.md, hero carried over. Posts are
-   independent, so fan them out one-agent-per-post exactly like Phase 3 when there are several; for
-   long articles, hand the precise worklist to the author and point at blogkit's own writing / hero
-   skills rather than machine-translating a long body. Report any **hero gap** or **broken hero
-   reference**. If blogkit is not detected, say so and skip.
+1. **BLOGKIT POST WORKLIST** - each post is a `<contentDir>/<slug>/` folder; for each, the
+   `<slug>/<newcode>` body that must exist beside the default (`<slug>/<defaultLocale>` or the neutral
+   `<slug>/post`), and whether the post has a `hero.js`. If blogkit is in use: add the new locale to the
+   `Blog` config's `locales[]`, then create each listed body - **same slug**, front-matter human fields
+   + body translated per translation-rules.md, and extend the post's single `hero.js` `text` map with
+   the new locale (reusing its shared gradient), its per-locale JPEG rendered via blogkit's
+   `hero_image.md`. Posts are independent, so fan them out one-agent-per-post exactly like Phase 3 when
+   there are several; for long articles, hand the precise worklist to the author and point at blogkit's
+   own writing / hero skills rather than machine-translating a long body. Report any **hero locale gap**
+   or **broken hero reference**. If blogkit is not detected, say so and skip.
 2. **HARDCODED LOCALE-LIST LEADS** - lines in app code that name existing locale codes as literals
    (`generateStaticParams`, hreflang / sitemap builders, middleware matchers, locale `switch`es).
    These do not follow `L`, so the new locale is missing until they are updated. Add the new code, and
@@ -157,7 +159,7 @@ the picker shows just the label - fine, but say so, and mention a custom `render
    - **`tsc` green** stated as the coverage proof, with the **translated-entries count**;
    - the **`needs-review` list** - every flagged entry by `file:line` + reason, so a human reviews only
      those;
-   - the **blogkit result** (posts created / handed off, hero gaps, or "not detected");
+   - the **blogkit result** (posts created / handed off, hero locale gaps, or "not detected");
    - the **compile-invisible coverage line**: hardcoded-list leads fixed or left as advice, and the
      picker-flag note.
    Offer to save a long report to `claude/reports/i18nkit-add-locale-<code>.md`.

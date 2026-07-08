@@ -5,9 +5,10 @@
 # Adding a locale to `new I18n({ locales })` grows the union `L`, so `tsc` already hands you an
 # exhaustive worklist of every catalog entry to translate. This script covers only the two things
 # the compiler CANNOT see, because neither moves `L`:
-#   1. BLOGKIT POST WORKLIST - the same-slug post file each default-locale article needs for the new
-#      locale (@daanvandenbergh/blogkit localizes file-per-language with NO fallback, so a missing
-#      file is a broken page), plus whether the base post carries a hero image to carry over.
+#   1. BLOGKIT POST WORKLIST - for each post folder <slug>/, the <slug>/<newcode> body the new locale
+#      needs beside the default (@daanvandenbergh/blogkit localizes file-per-language inside a per-slug
+#      folder with NO fallback, so a missing file is a broken page), plus whether the post has a
+#      hero.js whose per-locale text map + rendered JPEG must gain the new locale.
 #   2. HARDCODED LOCALE-LIST LEADS - app code that names locale codes as literals (generateStaticParams,
 #      hreflang/sitemap builders, middleware matchers, locale switches) instead of reading i18n.list,
 #      so the new locale is missing there until it is added by hand.
@@ -18,6 +19,8 @@
 # Usage:   scan.sh <new-locale-code> [source-root]        (source-root default: src)
 # Env:     EXISTING_CODES="en nl"   the currently-configured codes, for the hardcoded-list grep
 #          CONTENT_DIR="./blog"     blogkit content root (from the Blog config; default ./blog)
+#          DEFAULT_CODE="en"        blogkit default locale (names the base body <slug>/<default><ext>;
+#                                   from the Blog config; default en)
 #          EXT=".mdx"               blogkit post extension (from the Blog config; default .mdx)
 #          CONFIG_FILE="app/i18n.ts"  the I18n config file to exclude from leads (it is meant to
 #                                     name every code; excluding it drops the obvious false leads)
@@ -28,11 +31,12 @@ NEWCODE="${1:-}"
 ROOT="${2:-src}"
 EXISTING_CODES="${EXISTING_CODES:-}"
 CONTENT_DIR="${CONTENT_DIR:-./blog}"
+DEFAULT_CODE="${DEFAULT_CODE:-en}"
 EXT="${EXT:-.mdx}"
 CONFIG_FILE="${CONFIG_FILE:-}"
 
 if [ -z "$NEWCODE" ]; then
-    echo "usage: scan.sh <new-locale-code> [source-root]   (EXISTING_CODES / CONTENT_DIR / EXT / CONFIG_FILE via env)" >&2
+    echo "usage: scan.sh <new-locale-code> [source-root]   (EXISTING_CODES / CONTENT_DIR / DEFAULT_CODE / EXT / CONFIG_FILE via env)" >&2
     exit 2
 fi
 
@@ -40,26 +44,45 @@ echo "############################################################"
 echo "# i18nkit-add-locale compile-invisible scan"
 echo "#   new locale : $NEWCODE"
 echo "#   source root: $ROOT"
-echo "#   blog dir   : $CONTENT_DIR  (extension $EXT)"
+echo "#   blog dir   : $CONTENT_DIR  (default $DEFAULT_CODE, extension $EXT)"
 echo "# These are LEADS ONLY - confirm each by reading the file."
 echo "############################################################"
 
 # ---------------------------------------------------------------------------
 echo
-echo "== SECTION 1: BLOGKIT POST WORKLIST (file-per-language, no fallback) =="
-echo "   For each default-locale post, the $NEWCODE/<slug>$EXT that must exist. blogkit has no"
-echo "   silent fallback, so a MISSING file renders as a broken page."
+echo "== SECTION 1: BLOGKIT POST WORKLIST (folder-per-slug, file-per-language, no fallback) =="
+echo "   Each post is a $CONTENT_DIR/<slug>/ folder with one <locale>$EXT body per language (the"
+echo "   default is <slug>/$DEFAULT_CODE$EXT, or the neutral <slug>/post$EXT). For each, the"
+echo "   <slug>/$NEWCODE$EXT that must exist. blogkit has no silent fallback, so a MISSING file"
+echo "   renders as a broken page."
 if [ -d "$CONTENT_DIR" ]; then
     found_post=0
-    for post in "$CONTENT_DIR"/*"$EXT"; do
-        [ -e "$post" ] || continue
+    for dir in "$CONTENT_DIR"/*/; do
+        [ -d "$dir" ] || continue
+        slug="$(basename "$dir")"
+        # The default-locale body names the post: prefer <default>$EXT, fall back to the neutral post$EXT.
+        if [ -f "$dir$DEFAULT_CODE$EXT" ]; then
+            base="$dir$DEFAULT_CODE$EXT"
+        elif [ -f "${dir}post$EXT" ]; then
+            base="${dir}post$EXT"
+        else
+            base=""
+        fi
+        if [ -z "$base" ]; then
+            # No default-locale body: any <locale>$EXT here is an orphan translation (base renamed/
+            # deleted). A folder with no bodies at all is not a post - stay quiet.
+            for tr in "$dir"*"$EXT"; do
+                [ -e "$tr" ] || continue
+                echo "   ORPHAN  : $tr  (no $DEFAULT_CODE$EXT / post$EXT base body in $slug/ - stale)"
+            done
+            continue
+        fi
         found_post=1
-        base="$(basename "$post")"
-        target="$CONTENT_DIR/$NEWCODE/$base"
-        # A hero is an `image:` line inside the leading front-matter block; grep the whole file as a
-        # cheap lead (front-matter is at the top), the agent confirms it is in the `---`...`---` block.
-        if grep -qE '^[[:space:]]*image:[[:space:]]*[^[:space:]]' "$post" 2>/dev/null; then
-            hero="  [base has hero image - carry one over]"
+        target="$dir$NEWCODE$EXT"
+        # The hero is one <slug>/hero.js exporting (locale)=>params with a per-locale `text` map; the new
+        # locale needs a `text` entry there AND a rendered public/.../hero.$NEWCODE.jpg (translation-rules.md).
+        if [ -f "${dir}hero.js" ]; then
+            hero="  [has hero.js - add \"$NEWCODE\" to its text map + render hero.$NEWCODE.jpg]"
         else
             hero=""
         fi
@@ -70,14 +93,7 @@ if [ -d "$CONTENT_DIR" ]; then
         fi
     done
     if [ "$found_post" -eq 0 ]; then
-        echo "   (no *$EXT posts in $CONTENT_DIR - nothing to translate here)"
-    fi
-    # Orphan translations: a $NEWCODE/<slug> whose base post is gone (stale after a rename/delete).
-    if [ -d "$CONTENT_DIR/$NEWCODE" ]; then
-        for tr in "$CONTENT_DIR/$NEWCODE"/*"$EXT"; do
-            [ -e "$tr" ] || continue
-            [ -f "$CONTENT_DIR/$(basename "$tr")" ] || echo "   ORPHAN  : $tr  (no base post - stale)"
-        done
+        echo "   (no <slug>/ post folders with a $DEFAULT_CODE$EXT / post$EXT body in $CONTENT_DIR - nothing to translate here)"
     fi
 else
     echo "   (no $CONTENT_DIR directory - blogkit not detected; skip this section unless the blog"

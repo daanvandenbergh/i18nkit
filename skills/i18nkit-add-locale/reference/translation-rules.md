@@ -10,10 +10,11 @@ and getting the split right is the whole skill:
    catalog entry provably covers the new locale. You do not hunt for these - the compiler hands them
    to you, exactly.
 2. **A few things the compiler cannot see** and that therefore need a direct check: `@daanvandenbergh/blogkit`
-   post files (content, localized file-per-language, **no** silent fallback - a missing file is a
-   broken page), hardcoded locale-code lists in app code (static params, hreflang, sitemaps,
-   middleware matchers) that enumerate locales literally instead of from `i18n.list`, and whether the
-   new locale has a built-in picker flag. None of these move `L`, so none of them error.
+   post files (content, localized file-per-language in a per-slug folder - one body per language plus a
+   per-post `hero.js` - with **no** silent fallback, so a missing file is a broken page), hardcoded
+   locale-code lists in app code (static params, hreflang, sitemaps, middleware matchers) that enumerate
+   locales literally instead of from `i18n.list`, and whether the new locale has a built-in picker flag.
+   None of these move `L`, so none of them error.
 
 The bar is **a real, shippable, grammatically-flawless translation that carries the source's meaning
 and intent** for every entry, with anything genuinely uncertain flagged for a human - never a silent
@@ -148,26 +149,39 @@ outcome worse than a flagged draft.
 ## blogkit post translation - the compiler-invisible content half
 
 If the project uses `@daanvandenbergh/blogkit`, adding a locale to i18nkit does **not** create the
-blog's translations - blogkit localizes **file-per-language**, and it has **no** silent fallback, so
-every default-locale post needs a same-slug file for the new locale or that page is broken.
+blog's translations - blogkit localizes **file-per-language inside a per-slug folder**, and it has
+**no** silent fallback, so every post needs a body file for the new locale or that page is broken.
+
+Each post is a **folder**: `<contentDir>/<slug>/` holds one `<locale><ext>` body per language (the
+default is `<slug>/<defaultLocale><ext>`, e.g. `en.mdx`; a neutral `<slug>/post<ext>` is the fallback
+name), plus a single `<slug>/hero.js` that renders every language's hero. (Extension defaults to `.mdx`.)
 
 1. **Add the new locale to the `Blog` config** (`locales[]` with its `code`/`label`) so blogkit serves
    it, and cross-check that its locale set now matches the `I18n` locales - a divergence between the two
    is its own finding.
-2. **For every default-locale post** `<contentDir>/<slug>.<ext>` (extension defaults to `.mdx`), create
-   `<contentDir>/<newcode>/<slug>.<ext>` - **same slug** (routing depends on it), translated:
+2. **For every post folder**, create the translated body `<contentDir>/<slug>/<newcode><ext>` beside the
+   default - **same slug** (routing depends on the folder name), translated:
    - **Front-matter**: translate the human fields (`title`, `excerpt`/`description`, and `tags` only if
      the site shows localized tag labels - otherwise leave tags as shared keys). Keep every front-matter
      **key** and every non-copy value (dates, slugs, ids) unchanged.
    - **Body**: translate prose. Leave code blocks, inline code, identifiers, URLs, and MDX component
      names/props untouched. Keep the heading structure and any anchors.
-   - **Hero image** (`image:`, optionally `author-image:`): carry a hero over - ideally a localized asset,
-     at minimum the base post's path so the translated page is not heroless. Flag a `broken hero
-     reference` if an `image:` path has no file under the served assets dir (`public/<path>`), and a
-     `hero gap` if a translation would render with no hero while its base has one.
+   - **Hero** (`<slug>/hero.js`): the hero is **not** a carried-over image path - it is one i18n-style
+     data file per post, `export default (locale) => ({ gradient, ...text[locale] })`, whose `text` map
+     holds each language's `title`/`subtitle`. Add the new locale's entry to that `text` map, **reusing
+     the post's single shared `gradient`** (never re-pick it) so the language renders with matching art.
+     A per-locale JPEG is then rendered to `public/assets/blog/<slug>/hero.<newcode>.jpg` and the new
+     `<newcode><ext>`'s `image:` front-matter pointed at **its own** file - never at another locale's
+     JPEG (each hero bakes in that language's text). Rendering runs headless Chrome, so hand it to
+     blogkit's `hero_image.md`; if a post's `hero.js` is still the single-language plain-object form,
+     converting it to the `(locale) => params` map is likewise blogkit's job. Flag a `hero locale gap`
+     if a post's `hero.js` (or its rendered JPEG) is missing the new locale, and a `broken hero
+     reference` if a translation's `image:` has no file under `public/` or points at another locale's JPEG.
 3. Translating full article bodies is content authoring - for anything beyond short posts, hand the
    precise per-post worklist to the author and point at blogkit's own `skills/blogkit` writing skill and
-   its `hero_image.md` skill rather than machine-translating a long article silently.
+   its `hero_image.md` skill rather than machine-translating a long article silently. (If the project
+   annotates `hero.js` with `@satisfies {Record<Locale, …>}` and runs `checkJs`, `tsc` may also surface
+   a missing locale there - a bonus, not the mechanism you rely on.)
 
 ## Hardcoded locale lists - the other compiler-invisible gap
 
@@ -186,8 +200,8 @@ the list from `i18n.list`.
   new locale. (Run the consumer's `npm run typecheck`, fallback `npx tsc --noEmit`.)
 - **A translated-entries count** and a **`needs-review` list**: every entry translated, with the flagged
   ones called out by `file:line` and reason, so a human reviews exactly those and not the whole set.
-- **blogkit result**: posts created / handed off, plus any hero gap or broken reference; or "blogkit not
-  detected - skipped".
+- **blogkit result**: posts created / handed off, plus any hero locale gap or broken hero reference; or
+  "blogkit not detected - skipped".
 - **Compile-invisible coverage**: the hardcoded-list leads that were fixed or left as advice, and a
   one-line note if the new locale has **no built-in picker flag** (the picker falls back to its label;
   a custom `renderFlag` can supply one) - not a bug, just so nothing is silently missing.

@@ -1,6 +1,6 @@
 ---
 name: i18nkit-sweep
-description: Full-project sweep that hunts down every user-facing string NOT wrapped in i18nkit's type-safe system (LanguageText / defineTextCatalog / a translator from useTranslator or i18n.translator) - so adding a locale stays a compile-checked guarantee instead of a manual hope. A team of parallel agents reads every UI file, reports each bare literal with file:line and category, and (only with --fix) wraps the confident ones through a co-located defineTextCatalog and verifies typecheck stays green. When the project uses @daanvandenbergh/blogkit it also verifies every post has a same-slug translation for every configured locale, and that any post with a hero image keeps one across its translations. Use this whenever the user wants to audit, enforce, or fix i18n / translation coverage, find or fix hardcoded / untranslated / non-translatable strings, make "all text support i18n" or "use LanguageText everywhere", verify nothing bypasses the translation system, get the codebase ready before adding a language, or asks "are all our strings translatable?" - even if they don't name the i18n module. It closes the gap for text that ALREADY exists; do NOT use it for translating supplied strings into another language, adding or configuring a locale in the I18n instance, or changing the default locale. Takes an optional area (e.g. components, "app/(dashboard)") to scope the sweep, or omit for all of src/. Report-only by default; pass --fix to also wrap the confident violations.
+description: Full-project sweep that hunts down every user-facing string NOT wrapped in i18nkit's type-safe system (LanguageText / defineTextCatalog / a translator from useTranslator or i18n.translator) - so adding a locale stays a compile-checked guarantee instead of a manual hope. A team of parallel agents reads every UI file, reports each bare literal with file:line and category, and (only with --fix) wraps the confident ones through a co-located defineTextCatalog and verifies typecheck stays green. When the project uses @daanvandenbergh/blogkit it also verifies every post's per-slug folder has a body for every configured locale, and that each post's hero.js covers every locale so each language renders its own hero. Use this whenever the user wants to audit, enforce, or fix i18n / translation coverage, find or fix hardcoded / untranslated / non-translatable strings, make "all text support i18n" or "use LanguageText everywhere", verify nothing bypasses the translation system, get the codebase ready before adding a language, or asks "are all our strings translatable?" - even if they don't name the i18n module. It closes the gap for text that ALREADY exists; do NOT use it for translating supplied strings into another language, adding or configuring a locale in the I18n instance, or changing the default locale. Takes an optional area (e.g. components, "app/(dashboard)") to scope the sweep, or omit for all of src/. Report-only by default; pass --fix to also wrap the confident violations.
 user-invokable: true
 argument-hint: "[area] [--fix]   e.g. components  |  \"app/(dashboard)\" --fix  |  (omit = report all of src/)"
 ---
@@ -147,48 +147,52 @@ each this task (fill in the shard's files and the resolved rules path):
    2. **If present, read the `Blog` config** for `contentDir` (a required field, conventionally
       `./blog`), the `locales[].code` list, `defaultLocale`, and `extension` (the post file
       extension, default `.mdx`). Cross-check that locale set against the `I18n` locales from Phase 0;
-      if they diverge, report the divergence as its own finding. Default-locale posts live at
-      `<contentDir>/<slug>.mdx` (content root); each translation at `<contentDir>/<code>/<slug>.mdx`
-      (same slug). blogkit has **no silent fallback**, so a missing file is a real gap.
-   3. **Post parity - a pure file check.** Set `CONTENT_DIR` from the config, replace `.mdx` with the
-      configured `extension` if it is non-default, and **inline the non-default locale codes as a
-      literal list** (write `for l in nl de` - do **not** rely on an unquoted `$langs` variable,
-      which does not word-split under zsh):
+      if they diverge, report the divergence as its own finding. Each post is a **folder**
+      `<contentDir>/<slug>/` holding one `<locale>.mdx` body per language - the default is
+      `<slug>/<defaultLocale>.mdx` (e.g. `en.mdx`; a neutral `<slug>/post.mdx` is the fallback name),
+      each translation `<slug>/<code>.mdx` (same folder), plus one `<slug>/hero.js`. blogkit has **no
+      silent fallback**, so a missing file is a real gap.
+   3. **Post parity - a pure file check.** Set `CONTENT_DIR` and `DEF` (the default locale) from the
+      config, replace `.mdx` with the configured `extension` if it is non-default, and **inline the
+      non-default locale codes as a literal list** (write `for l in nl de` - do **not** rely on an
+      unquoted `$langs` variable, which does not word-split under zsh):
       ```bash
-      CONTENT_DIR="./blog"                 # from the Blog config
-      for post in "$CONTENT_DIR"/*.mdx; do
-          [ -e "$post" ] || continue
+      CONTENT_DIR="./blog"; DEF="en"       # from the Blog config (contentDir, defaultLocale)
+      # find (not a bare glob) so an empty or non-post folder never aborts the loop under zsh's nomatch
+      find "$CONTENT_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
+          # a post needs a default-locale body: <default>.mdx, or the neutral post.mdx fallback
+          if [ ! -f "$dir/$DEF.mdx" ] && [ ! -f "$dir/post.mdx" ]; then
+              # no base body: any <locale>.mdx here is an orphan translation (base renamed/deleted)
+              find "$dir" -maxdepth 1 -name '*.mdx' -exec echo "ORPHAN: {}" \;
+              continue
+          fi
           for l in nl de; do               # <- the non-default locale codes, inline
-              [ -f "$CONTENT_DIR/$l/$(basename "$post")" ] || echo "MISSING: $CONTENT_DIR/$l/$(basename "$post")"
-          done
-      done
-      # orphan translations - a <code>/<slug>.mdx whose base post is gone:
-      for l in nl de; do
-          [ -d "$CONTENT_DIR/$l" ] || continue
-          for tr in "$CONTENT_DIR/$l"/*.mdx; do
-              [ -e "$tr" ] || continue
-              [ -f "$CONTENT_DIR/$(basename "$tr")" ] || echo "ORPHAN: $tr"
+              [ -f "$dir/$l.mdx" ] || echo "MISSING: $dir/$l.mdx"
           done
       done
       ```
-   4. **Hero-image parity (only for posts that have a hero).** blogkit's `image:` is an *optional*
-      front-matter field pointing to a served path (`/assets/blog/<slug>.jpg`) that resolves to a
-      file under the consumer's `public/` folder (`public/<served-path>`; the Next.js convention - if
-      the project serves static assets elsewhere, say the base dir is a heuristic). There is **no**
-      enforced per-locale image path, so each post carries its own `image:`. Read the `image:` (and,
-      cheaply, `author-image:`) line from each post's leading `---`...`---` front-matter block, then:
-      - **Missing translated hero** - a translation that exists but sets **no** `image:` while its
-        base post has one -> **hero gap** (the translated page renders heroless). (Skip translations
-        that are entirely absent - already covered by the `MISSING:` post gap.)
-      - **Broken hero reference** - an `image:`/`author-image:` path with **no** file under
-        `public/` -> **broken hero reference**. Check base **and** translations.
-      - **Reused hero (advisory, low confidence)** - a translation whose `image:` is byte-identical
-        to its base's path -> soft note that the hero may carry untranslated text and a localized
-        hero is preferred; never a hard gap (a photographic hero can legitimately be shared).
-   5. **Report** each `MISSING:`, hero gap, broken reference, and orphan as a **blogkit-parity gap**
-      in the coverage section - a content-parity gap, not a translator violation, and **never
-      auto-fixed** here (writing/translating a post body, or generating a localized hero, is the blog
-      author's job - point to blogkit's own `skills/blogkit` write and `hero_image.md` skills).
+   4. **Hero parity.** The hero is one `<slug>/hero.js` per post, `export default (locale) => ({
+      gradient, ...text[locale] })`, whose `text` map holds each language's `title`/`subtitle`; it is
+      rendered once per locale to `public/assets/blog/<slug>/hero.<code>.jpg`, and each body's
+      `image:` front-matter points at its **own** locale's JPEG (a hero bakes in that language's text,
+      so a shared JPEG is untranslated copy). Two checks:
+      - **Primary - `hero.js` locale coverage (robust, no path guessing).** For each post that has a
+        `hero.js` in the `(locale) => params` form, read its `text` map and confirm it has a key for
+        **every** configured locale. A configured locale missing from the map -> **hero locale gap**
+        (that language renders a blank/wrong hero). This is the signal blogkit's `hero_image.md`
+        defers to the sweep to catch project-wide. (A single-language plain-object `hero.js` on a
+        now-multi-locale blog is itself a `hero locale gap` - it needs converting to the map form.)
+      - **Secondary - rendered hero + `image:` reference (heuristic path).** By the Next.js
+        convention the JPEGs live at `public/assets/blog/<slug>/hero.<code>.jpg` (say the base dir is
+        a heuristic if the project serves static assets elsewhere). For each configured locale whose
+        body exists, flag a **broken hero reference** if its `hero.<code>.jpg` is missing, if the
+        body's `image:` path has no file under `public/`, or if the `image:` points at **another**
+        locale's JPEG (e.g. `<slug>/fr.mdx` -> `hero.en.jpg`). Check the base body too.
+   5. **Report** each `MISSING:`, hero locale gap, broken hero reference, and orphan as a
+      **blogkit-parity gap** in the coverage section - a content-parity gap, not a translator
+      violation, and **never auto-fixed** here (writing/translating a post body, or generating a
+      localized hero, is the blog author's job - point to blogkit's own `skills/blogkit` write and
+      `hero_image.md` skills).
 
 ## Notes
 

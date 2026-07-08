@@ -95,7 +95,6 @@ export function LanguagePicker({
                 className="i18nkit-picker__trigger"
                 onClick={() => setOpen((v) => !v)}
                 aria-label={`${changeLanguageLabel}: ${activeLabel}`}
-                aria-haspopup="true"
                 aria-expanded={open}
                 aria-controls={open ? menuId : undefined}
             >

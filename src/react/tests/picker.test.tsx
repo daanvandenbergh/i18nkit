@@ -84,6 +84,13 @@ describe("LanguagePicker", () => {
         expect(panel.getAttribute("aria-label")).toBe("Change language");
     });
 
+    it("is a disclosure, not a menu: no aria-haspopup promising menu semantics it lacks", () => {
+        mount("en", () => {});
+        // The panel is a role="group" of buttons (arrow-key menu nav is not implemented), so the
+        // trigger must not advertise aria-haspopup (== "menu") - only aria-expanded/aria-controls.
+        expect(query(".i18nkit-picker__trigger").hasAttribute("aria-haspopup")).toBe(false);
+    });
+
     it("reflects open state on the trigger's aria-expanded", () => {
         mount("en", () => {});
         expect(query(".i18nkit-picker__trigger").getAttribute("aria-expanded")).toBe("false");

@@ -82,6 +82,14 @@ describe("Flag", () => {
         expect(flagSvg("sr")).toBeNull();
         expect(flagSvg("qya-ZZ")).toBeNull();
     });
+
+    it("does not treat an extension/private-use subtag as a region", () => {
+        // `en-t-de`: the `de` follows the `-t-` extension singleton, so it is NOT Germany;
+        // resolution falls back to English's default region (United Kingdom).
+        expect(flagSvg("en-t-de")?.querySelector('rect[fill="#012169"]')).not.toBeNull();
+        // `de-x-in`: `in` is inside a private-use section, not India; stays German.
+        expect(flagSvg("de-x-in")?.querySelector('rect[fill="#DD0000"]')).not.toBeNull();
+    });
 });
 
 describe("localeFlag", () => {

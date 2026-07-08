@@ -26,6 +26,37 @@ describe("localeForSegment", () => {
         expect(i18n.localeForSegment("en")).toBe("en");
         expect(i18n.localeForSegment("pricing")).toBeNull();
     });
+
+    it("matches a region-subtag htmlLang case-insensitively (so a lowercased URL still parses)", () => {
+        const regional = new I18n({
+            locales: { us: { label: "US English", htmlLang: "en-US" }, nl: { label: "Nederlands" } },
+            default: "us",
+        });
+        expect(regional.localeForSegment("en-US")).toBe("us");
+        expect(regional.localeForSegment("en-us")).toBe("us");
+        expect(regional.stripLocalePrefix("/en-us/pricing")).toBe("/pricing");
+        expect(regional.switchLocalePath("/en-us/pricing", "nl")).toBe("/nl/pricing");
+    });
+
+    it("emits a lowercase URL prefix for a region-subtag htmlLang, keeping <html lang> casing", () => {
+        const regional = new I18n({
+            locales: { en: { label: "English" }, gb: { label: "British", htmlLang: "en-GB" } },
+            default: "en",
+            origin: "https://example.com",
+        });
+        // The URL side is lowercase everywhere it is generated...
+        expect(regional.prefixFor("gb")).toBe("/en-gb");
+        expect(regional.localizeHref("/pricing", "gb")).toBe("/en-gb/pricing");
+        expect(regional.switchLocalePath("/pricing", "gb")).toBe("/en-gb/pricing");
+        const alternates = regional.hreflangAlternates("/pricing", "gb");
+        expect(alternates.canonical).toBe("https://example.com/en-gb/pricing");
+        // ...but the <html lang> value and the hreflang key keep the configured BCP-47 casing.
+        expect(regional.htmlLangFor("gb")).toBe("en-GB");
+        expect(alternates.languages["en-GB"]).toBe("https://example.com/en-gb/pricing");
+        // Round-trip: the lowercase URL it emits parses straight back to the locale.
+        expect(regional.stripLocalePrefix("/en-gb/pricing")).toBe("/pricing");
+        expect(regional.localizeHref("/en-gb/pricing", "gb")).toBe("/en-gb/pricing");
+    });
 });
 
 describe("isLocalizedPath", () => {

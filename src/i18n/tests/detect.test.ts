@@ -93,6 +93,13 @@ describe("matchAcceptLanguage", () => {
         expect(i18n.matchAcceptLanguage("en;q=abc,nl;q=0.5")).toBe("nl");
     });
 
+    it("clamps a malformed q>1 so it cannot outrank a legitimate q=1", () => {
+        // `en;q=1.5` is malformed - RFC 7231 caps q at 1. Clamped, both weigh 1, and the stable
+        // sort keeps header order, so the first-listed `nl` wins (before the fix, en=1.5 won).
+        expect(i18n.matchAcceptLanguage("nl;q=1,en;q=1.5")).toBe("nl");
+        expect(i18n.matchAcceptLanguage("nl,en;q=1e3")).toBe("nl");
+    });
+
     it("skips entries with an empty primary subtag", () => {
         expect(i18n.matchAcceptLanguage(",nl")).toBe("nl");
     });

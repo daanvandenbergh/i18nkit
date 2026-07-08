@@ -138,3 +138,13 @@
         transform: none;
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .i18nkit-picker__panel {
+        animation: none;
+    }
+    .i18nkit-picker__caret,
+    .i18nkit-picker__trigger {
+        transition: none;
+    }
+}

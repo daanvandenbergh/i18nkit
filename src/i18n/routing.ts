@@ -62,7 +62,10 @@ export function isLocalizedPath<L extends string>(config: RoutingConfig<L>, path
  * @returns the matching locale code, or null.
  */
 export function localeForSegment<L extends string>(config: RoutingConfig<L>, segment: string): L | null {
-    return config.locales.find((info) => info.htmlLang === segment)?.code ?? null;
+    // Compare case-insensitively so a lowercased URL (`/en-gb/x`) still matches a region-subtag
+    // locale (`htmlLang: "en-GB"`), mirroring how `matchAcceptLanguage` lowercases both sides.
+    const lower = segment.toLowerCase();
+    return config.locales.find((info) => info.htmlLang.toLowerCase() === lower)?.code ?? null;
 }
 
 /**
@@ -70,13 +73,18 @@ export function localeForSegment<L extends string>(config: RoutingConfig<L>, seg
  * the `"prefix-except-default"` strategy (bare URLs). Under `"prefix-all"` the default locale is
  * prefixed too, so this never returns `""`.
  *
+ * The `htmlLang` is lowercased for the URL, so a region/script-subtag locale (`htmlLang: "en-GB"`)
+ * yields the conventional lowercase prefix `"/en-gb"`, matching the case-insensitive segment parsing
+ * in {@link localeForSegment} (it round-trips). The document `<html lang>` value keeps its configured
+ * BCP-47 casing - read that via `htmlLangFor`, not from the URL.
+ *
  * @param config - the routing config.
  * @param locale - the locale.
- * @returns the leading URL segment, or `""`.
+ * @returns the leading URL segment (lowercased), or `""`.
  */
 export function prefixFor<L extends string>(config: RoutingConfig<L>, locale: L): string {
     const prefixed = config.strategy === "prefix-all" || locale !== config.default;
-    return prefixed ? `/${htmlLangOf(config, locale)}` : "";
+    return prefixed ? `/${htmlLangOf(config, locale).toLowerCase()}` : "";
 }
 
 /**

@@ -499,6 +499,11 @@ function resolveFlagRegion(locale: string): string | undefined {
     const parts = locale.toLowerCase().split(/[-_]/);
     for (let i = 1; i < parts.length; i++) {
         const part = parts[i];
+        // A singleton subtag (`t`, `u`, `x`, ...) opens an extension / private-use section; no
+        // region follows it, so stop before mistaking e.g. the `de` in `en-t-de` for a region.
+        if (part && part.length === 1) {
+            break;
+        }
         if (part && part.length === 2 && /^[a-z]{2}$/.test(part) && part in FLAG_BY_REGION) {
             return part;
         }

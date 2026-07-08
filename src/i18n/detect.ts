@@ -55,7 +55,10 @@ export function matchAcceptLanguage<L extends string>(
             const qParam = params.find((p) => p.trim().toLowerCase().startsWith("q="));
             const q = qParam ? Number.parseFloat(qParam.trim().slice(2)) : 1;
             const full = tag.trim().toLowerCase();
-            return { full, primary: full.split("-")[0], q: Number.isNaN(q) ? 0 : q };
+            // Clamp to the RFC 7231 range [0,1]: a malformed `q>1` (`q=1.5`, `q=1e3`) must not
+            // outrank a legitimate `q=1`, and a negative q clamps to 0 (dropped by the filter
+            // below). An unparseable weight (`q=abc` -> NaN) still drops the tag.
+            return { full, primary: full.split("-")[0], q: Number.isNaN(q) ? 0 : Math.min(Math.max(q, 0), 1) };
         })
         .filter((entry) => entry.primary && entry.q > 0)
         .sort((a, b) => b.q - a.q);
