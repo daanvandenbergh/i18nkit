@@ -34,31 +34,41 @@ npm install @daanvandenbergh/i18nkit
 
 `react` / `react-dom` are optional peer dependencies - you only need them if you use the `/react` entry.
 
-## Install the Claude Code skill
+## Install the Claude Code skills
 
-i18nkit ships an agent skill, **`i18nkit-sweep`**, that sweeps your source for user-facing strings
-that bypass the type-safe system (and, if you use `@daanvandenbergh/blogkit`, checks every post has a
-translation and its own localized hero for each locale). It is report-only by default; run it with `/i18nkit-sweep`.
+i18nkit ships two agent skills:
 
-Wire it into Claude Code with a **symlink**, so it tracks the installed package version - an
-`npm update` keeps the skill current, with no copy to re-sync:
+- **`i18nkit-sweep`** - sweeps your source for user-facing strings that bypass the type-safe system
+  (and, if you use `@daanvandenbergh/blogkit`, checks every post has a translation and its own
+  localized hero for each locale). Report-only by default; run it with `/i18nkit-sweep`.
+- **`i18nkit-add-locale`** - adds a new language: edits your `I18n` config, then compiler-drives the
+  translation of every catalog entry `tsc` flags (plus blogkit posts and hardcoded locale lists).
+  Run it with `/i18nkit-add-locale`.
+
+Wire them into Claude Code with **symlinks**, so they track the installed package version - an
+`npm update` keeps the skills current, with no copy to re-sync:
 
 ```bash
 mkdir -p .claude/skills
 # from your project root (assumes .claude/skills/ and node_modules/ share this root):
-ln -s ../../node_modules/@daanvandenbergh/i18nkit/skills/i18nkit-sweep .claude/skills/i18nkit-sweep
+for skill in i18nkit-sweep i18nkit-add-locale; do
+    ln -s "../../node_modules/@daanvandenbergh/i18nkit/skills/$skill" ".claude/skills/$skill"
+done
 ```
 
-If your layout differs, point the link at an absolute target resolved by node:
+If your layout differs, point the links at an absolute target resolved by node:
 
 ```bash
-ln -s "$(dirname "$(node -p "require.resolve('@daanvandenbergh/i18nkit/package.json')")")/skills/i18nkit-sweep" \
-      "$(pwd)/.claude/skills/i18nkit-sweep"
+pkg="$(dirname "$(node -p "require.resolve('@daanvandenbergh/i18nkit/package.json')")")"
+for skill in i18nkit-sweep i18nkit-add-locale; do
+    ln -s "$pkg/skills/$skill" "$(pwd)/.claude/skills/$skill"
+done
 ```
 
-Verify with `ls .claude/skills/i18nkit-sweep/SKILL.md`, then invoke `/i18nkit-sweep` in Claude Code.
-(The target exists once you have run `npm install`.) Developing against a local checkout of this repo?
-Link the source folder instead: `ln -s ../../skills/i18nkit-sweep .claude/skills/i18nkit-sweep`.
+Verify with `ls .claude/skills/i18nkit-sweep/SKILL.md .claude/skills/i18nkit-add-locale/SKILL.md`, then
+invoke `/i18nkit-sweep` or `/i18nkit-add-locale` in Claude Code. (The targets exist once you have run
+`npm install`.) Developing against a local checkout of this repo? Link the source folders instead:
+`ln -s ../../skills/$skill .claude/skills/$skill`.
 
 ## Set up once
 
