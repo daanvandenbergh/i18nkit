@@ -1,0 +1,140 @@
+/*
+ * Styles for <LanguagePicker>. Import once in your app:
+ *   import "@daanvandenbergh/i18nkit/styles.css";
+ *
+ * Every color is a CSS custom property with a sensible fallback, so the picker looks right with
+ * zero configuration and restyles by setting `--i18nkit-*` anywhere up the tree (e.g. on :root):
+ *   :root { --i18nkit-color-primary: #7c3aed; --i18nkit-color-surface: #0b1220; }
+ */
+
+.i18nkit-picker {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.i18nkit-picker *,
+.i18nkit-picker *::before,
+.i18nkit-picker *::after {
+    box-sizing: border-box;
+}
+
+/* Trigger: a compact bordered chip showing the active locale + a caret. */
+.i18nkit-picker__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--i18nkit-color-border, #e2e8f0);
+    border-radius: 10px;
+    background: var(--i18nkit-color-surface, #ffffff);
+    color: var(--i18nkit-color-ink, #1a1a1a);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.i18nkit-picker__trigger:hover {
+    background: var(--i18nkit-color-hover, #f4f7fa);
+}
+
+.i18nkit-picker__trigger:focus-visible {
+    outline: none;
+    border-color: var(--i18nkit-color-primary, #2563eb);
+    box-shadow: 0 0 0 3px var(--i18nkit-color-ring, rgba(37, 99, 235, 0.18));
+}
+
+.i18nkit-picker__flag {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
+}
+
+.i18nkit-picker__current {
+    white-space: nowrap;
+}
+
+.i18nkit-picker__caret {
+    color: var(--i18nkit-color-muted, #64748b);
+    transition: transform 0.15s ease;
+}
+
+.i18nkit-picker__caret--open {
+    transform: rotate(180deg);
+}
+
+/* Dropdown panel, right-aligned under the trigger. */
+.i18nkit-picker__panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 200px;
+    padding: 6px;
+    background: var(--i18nkit-color-surface, #ffffff);
+    border: 1px solid var(--i18nkit-color-border, #e2e8f0);
+    border-radius: 13px;
+    box-shadow: var(--i18nkit-shadow, 0 16px 38px rgba(11, 27, 54, 0.16));
+    z-index: 80;
+    animation: i18nkit-popdown 0.14s ease;
+}
+
+.i18nkit-picker__heading {
+    padding: 9px 10px 7px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--i18nkit-color-muted, #9aa5b5);
+}
+
+.i18nkit-picker__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--i18nkit-color-ink, #1a1a1a);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    text-align: left;
+}
+
+.i18nkit-picker__item:hover {
+    background: var(--i18nkit-color-hover, #f4f7fa);
+}
+
+.i18nkit-picker__item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--i18nkit-color-primary, #2563eb) inset;
+}
+
+.i18nkit-picker__label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.i18nkit-picker__check {
+    color: var(--i18nkit-color-primary, #2563eb);
+}
+
+@keyframes i18nkit-popdown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

@@ -1,3 +1,6 @@
 # To Do list
 
-- [ ] Check i18nkit-sweep and detect @daanvandenbergh/blogkit usage, if so then we also need to account for that each blog post has a translated blog post for all languages in the skill sweep.
+- [ ] Decide on a license. Deliberately none for now (no `license` field in package.json, no
+      LICENSE file, no README section) per owner's choice on 2026-07-08. Note: npm warns on
+      publish without a `license` field, and "no license" means all-rights-reserved for
+      consumers. Unblocked by: owner picking a license.

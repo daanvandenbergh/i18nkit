@@ -1,22 +1,32 @@
 # Project: i18nkit
 
-i18nkit is a typescript package managed to handle type safe i18n for websites frontend and backend. Also offering an agent skill to check if everything is translated.
+i18nkit is a TypeScript package for 100% type-safe i18n on websites (frontend and backend): declare
+your locales once and the compiler flags every string still missing a translation. A framework-agnostic
+core plus an optional React layer. Also offering agent skills to check if everything is translated and to add a new language.
 
 ## Directory Architecture
 
 ```
 skills/                             # The agent skills
   i18nkit-sweep                     # The skill for sweeping the entire project to check if everything is correctly translated
+  i18nkit-add-locale                # The skill for adding a new language: edit the I18n config, then compiler-driven
+                                    #   translate every catalog entry tsc now flags, plus blogkit posts + hardcoded locale lists
 src/
-  index.ts                          # Package root entry ("."), re-exports the blog module
+  index.ts                          # Package root entry ("."), re-exports the i18n core module
+  i18n/                             # Framework-agnostic core module -> "." entry. The I18n class
+                                    #   (i18n.ts) plus its pure pieces: types, translate, catalog,
+                                    #   detect (Accept-Language / cookie), routing (localized URLs).
+  react/                            # React adapter -> "./react" entry (react as an optional peer):
+                                    #   I18nProvider + hooks, LanguagePicker, LocaleLink, styles.css.
 ```
-Each top-level `src/` folder is one module and maps to a package entry point. Future
-server modules (e.g. `comments/`, `database/`) are new siblings under `src/`.
+Each top-level `src/` folder is one module and maps to a package entry point. Future modules are new
+siblings under `src/`. The public API is the `I18n` class - a consumer constructs one instance and
+reaches every feature through its methods (`i18n.defineTextCatalog`, `i18n.translator`, `i18n.resolveLocale`, ...).
 
 ## Modular Coding
-Organize the backend as a set of **(semi-)isolated modules**, each with one clear goal,
-exposed through a single public surface - a namespace like `Posts` or `Database` - instead of
-a sprawl of loose functions imported from all over. `src/blog/` is the reference.
+Organize the code as a set of **(semi-)isolated modules**, each with one clear goal, exposed through a
+single public surface - the `I18n` class for the core, the barrel for `react` - instead of a sprawl of
+loose functions imported from all over. `src/i18n/` is the reference.
 
 Keep all of a module's files together inside that module - its logic, types, and tests -
 never scattered into shared or global buckets elsewhere in the project. If something belongs
@@ -32,20 +42,18 @@ check that really belongs to module B (its domain, its data, its vocabulary), ad
 public surface and call it from A. Do **not** inline a B-shaped thing inside A. This holds even
 when B does not have it yet and only A needs it today: **extend B, then import it** - that is
 exactly the moment the mistake happens (you needed something from B, B lacked it, so you wrote
-it where you stood instead of where it belongs). Examples: the "does this post exist?"
-check and `UnknownPostError` live on the `Posts` namespace, not in `comments`
-(which calls `Posts.assertExists`); duplicate-key detection lives on `Database`
-(`isDuplicateKeyError`, a generic database concern), not in every module that inserts. Generic
-infrastructure (database error codes, connections) belongs to `db`; domain logic belongs to that
-domain's module. Own it where the domain lives, not where it is first used.
+it where you stood instead of where it belongs). Example: locale detection, URL routing, and text
+resolution all live on the `I18n` core (`src/i18n/`) and are reached from `react/` as
+`i18n.resolveLocale`, `i18n.localizeHref`, `i18n.translator`; the React layer does **not** re-implement
+any of them. Own it where the domain lives, not where it is first used.
 
 ## Coding Standards
 - Dont use `—`, instead use `-`.
 - Use 4 spaces as 1 indent level.
 - Write in commercial grade typescript which is ready for production.
 - Ensure each function, class, method, interface, interface property has a docstring defining their behaviour.
-- Never use @ts-expect-error, @ts-ignore, @ts-no-check or similar directives.
-- Place test files in a `tests/` subdirectory next to the code under test - never alongside the source files. Example: tests for `src/blog/*.ts` live in `src/blog/tests/*.test.ts`, tests for `src/*.ts` live in `src/tests/*.test.ts`.
+- Never use @ts-ignore, @ts-nocheck, or similar directives that suppress real errors. `@ts-expect-error` is banned in library/source code too, with ONE exception: dedicated type-safety test files (`*.test-d.ts` / `*.test-d.tsx`), where `@ts-expect-error` *asserts* that an invalid construct is correctly rejected by the compiler. There it verifies type safety rather than hiding a bug - and `tsc` fails on an unused directive, so a regression breaks `npm run typecheck`. These files are validated by `tsc` (they are excluded from the vitest run glob), never executed.
+- Place test files in a `tests/` subdirectory next to the code under test - never alongside the source files. Example: tests for `src/i18n/*.ts` live in `src/i18n/tests/*.test.ts`, tests for `src/*.ts` live in `src/tests/*.test.ts`.
 
 ## Core Principles
 
