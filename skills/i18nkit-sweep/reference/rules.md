@@ -79,9 +79,9 @@ first (the finder's "SUSPECT FILES").
 - **User / DB / content data**: a customer's real name, address, phone, invoice number, transcript.
   Also placeholder/demo/sample data (`_data.ts`-style stand-in content, sample names): it is
   stand-in content, not product copy, so it is exempt like real DB data.
-- **The entire blog area when the project uses `@daanvandenbergh/blogkit`**: MDX article bodies
+- **The entire blog area when the project uses `@daanvandenbergh/scribekit`**: MDX article bodies
   **and their front-matter-derived fields** (title, excerpt, author, tags) are content, localized
-  **file-per-language in a per-slug folder** by blogkit - each post is a folder `<contentDir>/<slug>/`
+  **file-per-language in a per-slug folder** by scribekit - each post is a folder `<contentDir>/<slug>/`
   whose default body `<slug>/<defaultLocale>.mdx` gets a same-slug translation beside it (e.g.
   `blog/<slug>/nl.mdx`), never wrapped in a translator. The post's `<slug>/hero.js` is likewise
   **content/data, not a translator seam**: its per-locale `text` map (`en`/`nl` `title`/`subtitle`) is
@@ -90,7 +90,7 @@ first (the finder's "SUSPECT FILES").
   page-shell chrome - a hardcoded nav label or empty state in a route/component - would still be copy,
   but the blog area is content-dominated; treat it as the low-yield exception.) Translation
   *completeness* - a missing locale body, or a locale absent from a `hero.js` `text` map - is not a
-  translator concern and is checked separately by the sweep's blogkit-parity step, not flagged here.
+  translator concern and is checked separately by the sweep's scribekit-parity step, not flagged here.
 - **The brand / product name** rendered as text (e.g. the wordmark) - a proper noun, not translated.
   If it must be a `LanguageText<L>` for a seam, the sanctioned form is `i18n.uniform("Brand")`.
 - **Language endonyms** - a locale's own name, i.e. the `label` on each entry in the `I18n`

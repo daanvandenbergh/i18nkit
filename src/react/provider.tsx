@@ -45,7 +45,11 @@ export interface I18nProviderProps<L extends string> {
     locale: L;
     /**
      * Called after the locale cookie is written when the user picks a new locale. Do the app's
-     * navigation/refresh here (e.g. `router.refresh()`, `location.reload()`). Optional.
+     * navigation here. On a URL-routed site (the locale lives in the path) you MUST navigate to the
+     * new locale's URL - `onChange={(next) => router.push(i18n.switchLocalePath(pathname, next))}` -
+     * because the path prefix, not the cookie, decides the locale, so a bare `router.refresh()` /
+     * `location.reload()` would reload the same URL and not switch. Only a cookie-only site (no
+     * locale in the URL) can use a plain refresh/reload, which re-reads the cookie. Optional.
      */
     onChange?: ((next: L) => void) | undefined;
     /** The subtree that can read the locale. */

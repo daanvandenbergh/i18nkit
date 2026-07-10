@@ -103,4 +103,48 @@ describe("matchAcceptLanguage", () => {
     it("skips entries with an empty primary subtag", () => {
         expect(i18n.matchAcceptLanguage(",nl")).toBe("nl");
     });
+
+    it("clamps a negative q to zero and drops the tag", () => {
+        // The lower half of the RFC 7231 [0,1] clamp, distinct from the q>1 case: a negative
+        // weight becomes 0 and is dropped by the `q > 0` filter, so the lower-listed positive tag
+        // wins rather than the malformed one.
+        expect(i18n.matchAcceptLanguage("nl;q=-0.5,en;q=0.3")).toBe("en");
+        // The only offer has a negative weight -> everything drops -> fallback.
+        expect(i18n.matchAcceptLanguage("nl;q=-1")).toBe("en");
+    });
+
+    it("treats an empty q value (q=) as unparseable and drops the tag", () => {
+        // `q=` -> parseFloat("") is NaN -> weight 0 -> dropped, so the explicit `en` survives.
+        expect(i18n.matchAcceptLanguage("nl;q=,en;q=0.3")).toBe("en");
+    });
+
+    it("finds the q parameter whatever its position among a tag's parameters", () => {
+        // params = ["foo=bar", "q=0.2"]: the parser scans all params for `q=` (a naive params[0]
+        // would read "foo=bar" -> NaN and wrongly drop en). en (0.2) outweighs nl (0.1).
+        expect(i18n.matchAcceptLanguage("en;foo=bar;q=0.2,nl;q=0.1")).toBe("en");
+    });
+
+    it("reads a q weight with trailing garbage as its leading numeric prefix", () => {
+        // Lenient parse: parseFloat("0.9xyz") is 0.9 (not NaN), so en keeps weight 0.9 and outranks
+        // nl's 0.1 - the tag is not dropped.
+        expect(i18n.matchAcceptLanguage("nl;q=0.1,en;q=0.9xyz")).toBe("en");
+    });
+
+    it("does not treat a wildcard (*) as a match and falls back past it", () => {
+        // `*` has no htmlLang to match, so it is skipped; a lone `*` yields the fallback and a real
+        // tag alongside it still wins.
+        expect(i18n.matchAcceptLanguage("*")).toBe("en");
+        expect(i18n.matchAcceptLanguage("*,nl;q=0.5")).toBe("nl");
+    });
+
+    it("falls back for a header of only separators and whitespace", () => {
+        // Every part reduces to an empty primary subtag and is dropped -> nothing ranked -> fallback.
+        expect(i18n.matchAcceptLanguage("  ,  ;q=0.5 , ")).toBe("en");
+    });
+
+    it("tolerates whitespace around tags and around the q parameter", () => {
+        // Spaces flanking the tag, the `;`, and the `q=` must not defeat parsing: nl (0.9) beats
+        // en-US (0.2) despite the padding.
+        expect(i18n.matchAcceptLanguage("  en-US ; q=0.2 ,  nl ; q=0.9 ")).toBe("nl");
+    });
 });

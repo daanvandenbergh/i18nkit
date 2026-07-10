@@ -122,8 +122,10 @@ export function localizeHref<L extends string>(config: RoutingConfig<L>, href: s
 
 /**
  * Rewrite a pathname to another locale's URL: strips any existing locale segment and applies the
- * target locale's prefix. Used by the language picker to navigate between `/nl/pricing` and
- * `/pricing`.
+ * target locale's prefix. On a URL-routed site the locale lives in the path, so wire this into the
+ * provider's `onChange` to move a locale change (e.g. from `<LanguagePicker>`) onto the target URL:
+ * `onChange={(next) => router.push(i18n.switchLocalePath(pathname, next))}`. Turns `/nl/pricing`
+ * into `/pricing` and back.
  *
  * @param config - the routing config.
  * @param pathname - the current URL pathname.

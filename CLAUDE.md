@@ -10,7 +10,7 @@ core plus an optional React layer. Also offering agent skills to check if everyt
 skills/                             # The agent skills
   i18nkit-sweep                     # The skill for sweeping the entire project to check if everything is correctly translated
   i18nkit-add-locale                # The skill for adding a new language: edit the I18n config, then compiler-driven
-                                    #   translate every catalog entry tsc now flags, plus blogkit posts + hardcoded locale lists
+                                    #   translate every catalog entry tsc now flags, plus scribekit posts + hardcoded locale lists
 src/
   index.ts                          # Package root entry ("."), re-exports the i18n core module
   i18n/                             # Framework-agnostic core module -> "." entry. The I18n class
@@ -122,6 +122,13 @@ up to (e.g. the README states the package is published to npm before it actually
 gap is a `TODO.md` item by default. When you have verified an item from the
 list is done, mark it `- [x]`, then delete the line - finished items must not linger. Keep the
 list to genuinely-pending, actionable items.
+
+**Write each item as a copy-paste-ready prompt.** Phrase every `- [ ]` so it can be pasted
+verbatim into a fresh Claude Code session and fixed with no other context. State what to do, the
+exact files/paths/functions involved, what is currently wrong or missing, what "done" looks like,
+and any command to run or check to verify. Be clear, descriptive, and detailed enough to act on
+cold - assume the session has none of the context you have now; a stub like "fix the schema" is
+not enough.
 
 ## Unit Tests
 After writing any code, write meticulous unit tests. This is critical, non-negotiable.

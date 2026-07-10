@@ -9,7 +9,7 @@ and getting the split right is the whole skill:
    key as a compile error. That error list **is** the exhaustive worklist: when `tsc` is green, every
    catalog entry provably covers the new locale. You do not hunt for these - the compiler hands them
    to you, exactly.
-2. **A few things the compiler cannot see** and that therefore need a direct check: `@daanvandenbergh/blogkit`
+2. **A few things the compiler cannot see** and that therefore need a direct check: `@daanvandenbergh/scribekit`
    post files (content, localized file-per-language in a per-slug folder - one body per language plus a
    per-post `hero.js` - with **no** silent fallback, so a missing file is a broken page), hardcoded
    locale-code lists in app code (static params, hreflang, sitemaps, middleware matchers) that enumerate
@@ -146,17 +146,17 @@ writes from scratch, but make the uncertainty explicit. Never leave an entry bla
 a blank does not compile, and a fabricated confident translation of legal/brand copy is the one
 outcome worse than a flagged draft.
 
-## blogkit post translation - the compiler-invisible content half
+## scribekit post translation - the compiler-invisible content half
 
-If the project uses `@daanvandenbergh/blogkit`, adding a locale to i18nkit does **not** create the
-blog's translations - blogkit localizes **file-per-language inside a per-slug folder**, and it has
+If the project uses `@daanvandenbergh/scribekit`, adding a locale to i18nkit does **not** create the
+blog's translations - scribekit localizes **file-per-language inside a per-slug folder**, and it has
 **no** silent fallback, so every post needs a body file for the new locale or that page is broken.
 
 Each post is a **folder**: `<contentDir>/<slug>/` holds one `<locale><ext>` body per language (the
 default is `<slug>/<defaultLocale><ext>`, e.g. `en.mdx`; a neutral `<slug>/post<ext>` is the fallback
 name), plus a single `<slug>/hero.js` that renders every language's hero. (Extension defaults to `.mdx`.)
 
-1. **Add the new locale to the `Blog` config** (`locales[]` with its `code`/`label`) so blogkit serves
+1. **Add the new locale to the `Blog` config** (`locales[]` with its `code`/`label`) so scribekit serves
    it, and cross-check that its locale set now matches the `I18n` locales - a divergence between the two
    is its own finding.
 2. **For every post folder**, create the translated body `<contentDir>/<slug>/<newcode><ext>` beside the
@@ -173,12 +173,12 @@ name), plus a single `<slug>/hero.js` that renders every language's hero. (Exten
      A per-locale JPEG is then rendered to `public/assets/blog/<slug>/hero.<newcode>.jpg` and the new
      `<newcode><ext>`'s `image:` front-matter pointed at **its own** file - never at another locale's
      JPEG (each hero bakes in that language's text). Rendering runs headless Chrome, so hand it to
-     blogkit's `hero_image.md`; if a post's `hero.js` is still the single-language plain-object form,
-     converting it to the `(locale) => params` map is likewise blogkit's job. Flag a `hero locale gap`
+     scribekit's `hero_image.md`; if a post's `hero.js` is still the single-language plain-object form,
+     converting it to the `(locale) => params` map is likewise scribekit's job. Flag a `hero locale gap`
      if a post's `hero.js` (or its rendered JPEG) is missing the new locale, and a `broken hero
      reference` if a translation's `image:` has no file under `public/` or points at another locale's JPEG.
 3. Translating full article bodies is content authoring - for anything beyond short posts, hand the
-   precise per-post worklist to the author and point at blogkit's own `skills/blogkit` writing skill and
+   precise per-post worklist to the author and point at scribekit's own `skills/scribekit` writing skill and
    its `hero_image.md` skill rather than machine-translating a long article silently. (If the project
    annotates `hero.js` with `@satisfies {Record<Locale, …>}` and runs `checkJs`, `tsc` may also surface
    a missing locale there - a bonus, not the mechanism you rely on.)
@@ -200,8 +200,8 @@ the list from `i18n.list`.
   new locale. (Run the consumer's `npm run typecheck`, fallback `npx tsc --noEmit`.)
 - **A translated-entries count** and a **`needs-review` list**: every entry translated, with the flagged
   ones called out by `file:line` and reason, so a human reviews exactly those and not the whole set.
-- **blogkit result**: posts created / handed off, plus any hero locale gap or broken hero reference; or
-  "blogkit not detected - skipped".
+- **scribekit result**: posts created / handed off, plus any hero locale gap or broken hero reference; or
+  "scribekit not detected - skipped".
 - **Compile-invisible coverage**: the hardcoded-list leads that were fixed or left as advice, and a
   one-line note if the new locale has **no built-in picker flag** (the picker falls back to its label;
   a custom `renderFlag` can supply one) - not a bug, just so nothing is silently missing.

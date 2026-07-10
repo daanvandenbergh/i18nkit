@@ -1,6 +1,6 @@
 ---
 name: i18nkit-sweep
-description: Full-project sweep that hunts down every user-facing string NOT wrapped in i18nkit's type-safe system (LanguageText / defineTextCatalog / a translator from useTranslator or i18n.translator) - so adding a locale stays a compile-checked guarantee instead of a manual hope. A team of parallel agents reads every UI file, reports each bare literal with file:line and category, and (only with --fix) wraps the confident ones through a co-located defineTextCatalog and verifies typecheck stays green. When the project uses @daanvandenbergh/blogkit it also verifies every post's per-slug folder has a body for every configured locale, and that each post's hero.js covers every locale so each language renders its own hero. Use this whenever the user wants to audit, enforce, or fix i18n / translation coverage, find or fix hardcoded / untranslated / non-translatable strings, make "all text support i18n" or "use LanguageText everywhere", verify nothing bypasses the translation system, get the codebase ready before adding a language, or asks "are all our strings translatable?" - even if they don't name the i18n module. It closes the gap for text that ALREADY exists; do NOT use it for translating supplied strings into another language, adding or configuring a locale in the I18n instance, or changing the default locale. Takes an optional area (e.g. components, "app/(dashboard)") to scope the sweep, or omit for all of src/. Report-only by default; pass --fix to also wrap the confident violations.
+description: Full-project sweep that hunts down every user-facing string NOT wrapped in i18nkit's type-safe system (LanguageText / defineTextCatalog / a translator from useTranslator or i18n.translator) - so adding a locale stays a compile-checked guarantee instead of a manual hope. A team of parallel agents reads every UI file, reports each bare literal with file:line and category, and (only with --fix) wraps the confident ones through a co-located defineTextCatalog and verifies typecheck stays green. When the project uses @daanvandenbergh/scribekit it also verifies every post's per-slug folder has a body for every configured locale, and that each post's hero.js covers every locale so each language renders its own hero. Use this whenever the user wants to audit, enforce, or fix i18n / translation coverage, find or fix hardcoded / untranslated / non-translatable strings, make "all text support i18n" or "use LanguageText everywhere", verify nothing bypasses the translation system, get the codebase ready before adding a language, or asks "are all our strings translatable?" - even if they don't name the i18n module. It closes the gap for text that ALREADY exists; do NOT use it for translating supplied strings into another language, adding or configuring a locale in the I18n instance, or changing the default locale. Takes an optional area (e.g. components, "app/(dashboard)") to scope the sweep, or omit for all of src/. Report-only by default; pass --fix to also wrap the confident violations.
 user-invokable: true
 argument-hint: "[area] [--fix]   e.g. components  |  \"app/(dashboard)\" --fix  |  (omit = report all of src/)"
 ---
@@ -49,7 +49,7 @@ Read it to learn:
 - the **default locale** = the `default` field.
 
 That set is what "if we shipped one more locale tomorrow" means concretely, and it is the locale
-axis both the string sweep and the blogkit-parity step (Phase 3.5) enumerate. Endonyms live in
+axis both the string sweep and the scribekit-parity step (Phase 3.5) enumerate. Endonyms live in
 `locales[x].label` and are **not** copy (see rules.md).
 
 ## Phase 1 - Scope and shard
@@ -63,7 +63,7 @@ axis both the string sweep and the blogkit-parity step (Phase 3.5) enumerate. En
      headings / bodies) and product/catalog modules (titles/descriptions shown at checkout). Real
      users see these, so bare copy there is a violation (`backend-copy`; see rules.md item 6). The
      rest of server code is machine/dev strings (throws, logs, index names) = not copy.
-   - **EXEMPT**: the blog area when `@daanvandenbergh/blogkit` is used (article bodies and
+   - **EXEMPT**: the blog area when `@daanvandenbergh/scribekit` is used (article bodies and
      front-matter-derived text are content, localized file-per-language; parity is checked
      separately in Phase 3.5); and placeholder/demo `_data.ts`-style data (stand-in content, treated
      like DB data).
@@ -122,7 +122,7 @@ each this task (fill in the shard's files and the resolved rules path):
    - A short **counts-by-category** tally (jsx-text / attribute / toast-or-error / metadata /
      json-ld / backend-copy).
    - A **coverage line**: which areas were swept and which were intentionally skipped (so the user
-     knows nothing was silently dropped), plus the blogkit-parity result from 3.5.
+     knows nothing was silently dropped), plus the scribekit-parity result from 3.5.
    Offer to save the report to `claude/reports/i18nkit-sweep.md` if the list is long.
 4. **Fix (only under `--fix`; skip this whole step by default).** Apply the fixes per rules.md ("How
    a fix is applied") - extend the file's `defineTextCatalog`, wire a translator via the right seam,
@@ -138,19 +138,19 @@ each this task (fill in the shard's files and the resolved rules path):
      the design note from rules.md item 6 and let the user decide the seam.
    After editing, run `npm run typecheck` (fallback `npx tsc --noEmit`) and report it green. If it
    fails, fix the wrap or revert that one finding - never leave the tree non-compiling.
-5. **blogkit translation parity (always, even without `--fix`).** This is the one place a new locale
+5. **scribekit translation parity (always, even without `--fix`).** This is the one place a new locale
    is **not** compile-checked, so verify it directly - mostly a file check, no agent.
-   1. **Detect blogkit.** The project uses it if any of: `@daanvandenbergh/blogkit` appears in the
+   1. **Detect scribekit.** The project uses it if any of: `@daanvandenbergh/scribekit` appears in the
       consumer's `package.json` (`dependencies`/`devDependencies`), a source file imports it, or a
       `new Blog({...})` instance exists. If **none** hold, **skip this whole step** and say so in the
-      coverage line ("blogkit not detected - blog parity skipped").
+      coverage line ("scribekit not detected - blog parity skipped").
    2. **If present, read the `Blog` config** for `contentDir` (a required field, conventionally
       `./blog`), the `locales[].code` list, `defaultLocale`, and `extension` (the post file
       extension, default `.mdx`). Cross-check that locale set against the `I18n` locales from Phase 0;
       if they diverge, report the divergence as its own finding. Each post is a **folder**
       `<contentDir>/<slug>/` holding one `<locale>.mdx` body per language - the default is
       `<slug>/<defaultLocale>.mdx` (e.g. `en.mdx`; a neutral `<slug>/post.mdx` is the fallback name),
-      each translation `<slug>/<code>.mdx` (same folder), plus one `<slug>/hero.js`. blogkit has **no
+      each translation `<slug>/<code>.mdx` (same folder), plus one `<slug>/hero.js`. scribekit has **no
       silent fallback**, so a missing file is a real gap.
    3. **Post parity - a pure file check.** Set `CONTENT_DIR` and `DEF` (the default locale) from the
       config, replace `.mdx` with the configured `extension` if it is non-default, and **inline the
@@ -179,7 +179,7 @@ each this task (fill in the shard's files and the resolved rules path):
       - **Primary - `hero.js` locale coverage (robust, no path guessing).** For each post that has a
         `hero.js` in the `(locale) => params` form, read its `text` map and confirm it has a key for
         **every** configured locale. A configured locale missing from the map -> **hero locale gap**
-        (that language renders a blank/wrong hero). This is the signal blogkit's `hero_image.md`
+        (that language renders a blank/wrong hero). This is the signal scribekit's `hero_image.md`
         defers to the sweep to catch project-wide. (A single-language plain-object `hero.js` on a
         now-multi-locale blog is itself a `hero locale gap` - it needs converting to the map form.)
       - **Secondary - rendered hero + `image:` reference (heuristic path).** By the Next.js
@@ -189,9 +189,9 @@ each this task (fill in the shard's files and the resolved rules path):
         body's `image:` path has no file under `public/`, or if the `image:` points at **another**
         locale's JPEG (e.g. `<slug>/fr.mdx` -> `hero.en.jpg`). Check the base body too.
    5. **Report** each `MISSING:`, hero locale gap, broken hero reference, and orphan as a
-      **blogkit-parity gap** in the coverage section - a content-parity gap, not a translator
+      **scribekit-parity gap** in the coverage section - a content-parity gap, not a translator
       violation, and **never auto-fixed** here (writing/translating a post body, or generating a
-      localized hero, is the blog author's job - point to blogkit's own `skills/blogkit` write and
+      localized hero, is the blog author's job - point to scribekit's own `skills/scribekit` write and
       `hero_image.md` skills).
 
 ## Notes

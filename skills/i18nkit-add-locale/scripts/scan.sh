@@ -5,8 +5,8 @@
 # Adding a locale to `new I18n({ locales })` grows the union `L`, so `tsc` already hands you an
 # exhaustive worklist of every catalog entry to translate. This script covers only the two things
 # the compiler CANNOT see, because neither moves `L`:
-#   1. BLOGKIT POST WORKLIST - for each post folder <slug>/, the <slug>/<newcode> body the new locale
-#      needs beside the default (@daanvandenbergh/blogkit localizes file-per-language inside a per-slug
+#   1. SCRIBEKIT POST WORKLIST - for each post folder <slug>/, the <slug>/<newcode> body the new locale
+#      needs beside the default (@daanvandenbergh/scribekit localizes file-per-language inside a per-slug
 #      folder with NO fallback, so a missing file is a broken page), plus whether the post has a
 #      hero.js whose per-locale text map + rendered JPEG must gain the new locale.
 #   2. HARDCODED LOCALE-LIST LEADS - app code that names locale codes as literals (generateStaticParams,
@@ -18,10 +18,10 @@
 #
 # Usage:   scan.sh <new-locale-code> [source-root]        (source-root default: src)
 # Env:     EXISTING_CODES="en nl"   the currently-configured codes, for the hardcoded-list grep
-#          CONTENT_DIR="./blog"     blogkit content root (from the Blog config; default ./blog)
-#          DEFAULT_CODE="en"        blogkit default locale (names the base body <slug>/<default><ext>;
+#          CONTENT_DIR="./blog"     scribekit content root (from the Blog config; default ./blog)
+#          DEFAULT_CODE="en"        scribekit default locale (names the base body <slug>/<default><ext>;
 #                                   from the Blog config; default en)
-#          EXT=".mdx"               blogkit post extension (from the Blog config; default .mdx)
+#          EXT=".mdx"               scribekit post extension (from the Blog config; default .mdx)
 #          CONFIG_FILE="app/i18n.ts"  the I18n config file to exclude from leads (it is meant to
 #                                     name every code; excluding it drops the obvious false leads)
 
@@ -50,10 +50,10 @@ echo "############################################################"
 
 # ---------------------------------------------------------------------------
 echo
-echo "== SECTION 1: BLOGKIT POST WORKLIST (folder-per-slug, file-per-language, no fallback) =="
+echo "== SECTION 1: SCRIBEKIT POST WORKLIST (folder-per-slug, file-per-language, no fallback) =="
 echo "   Each post is a $CONTENT_DIR/<slug>/ folder with one <locale>$EXT body per language (the"
 echo "   default is <slug>/$DEFAULT_CODE$EXT, or the neutral <slug>/post$EXT). For each, the"
-echo "   <slug>/$NEWCODE$EXT that must exist. blogkit has no silent fallback, so a MISSING file"
+echo "   <slug>/$NEWCODE$EXT that must exist. scribekit has no silent fallback, so a MISSING file"
 echo "   renders as a broken page."
 if [ -d "$CONTENT_DIR" ]; then
     found_post=0
@@ -96,7 +96,7 @@ if [ -d "$CONTENT_DIR" ]; then
         echo "   (no <slug>/ post folders with a $DEFAULT_CODE$EXT / post$EXT body in $CONTENT_DIR - nothing to translate here)"
     fi
 else
-    echo "   (no $CONTENT_DIR directory - blogkit not detected; skip this section unless the blog"
+    echo "   (no $CONTENT_DIR directory - scribekit not detected; skip this section unless the blog"
     echo "    content root lives elsewhere, then re-run with CONTENT_DIR set)"
 fi
 

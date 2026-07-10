@@ -279,7 +279,9 @@ export class I18n<L extends string> {
     }
 
     /**
-     * Rewrite a pathname to another locale (used by the picker to switch pages).
+     * Rewrite a pathname to another locale. On a URL-routed site, wire this into the provider's
+     * `onChange` to navigate a locale change (e.g. from `<LanguagePicker>`) to the target URL - the
+     * cookie alone does not switch locale when the path prefix decides it.
      *
      * @param pathname - the current pathname.
      * @param next - the locale to switch to.

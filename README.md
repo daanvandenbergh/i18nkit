@@ -1,5 +1,7 @@
 # i18nkit
 
+![i18nkit - type-safe i18n for TypeScript](claude/scribekit-hero/readme/hero.png)
+
 **Universal, 100% type-safe i18n for TypeScript sites.** Declare your locales once and the compiler
 guarantees every string is translated into every language - add a locale and TypeScript lights up at
 every translation you still owe.
@@ -39,10 +41,10 @@ npm install @daanvandenbergh/i18nkit
 i18nkit ships two agent skills:
 
 - **`i18nkit-sweep`** - sweeps your source for user-facing strings that bypass the type-safe system
-  (and, if you use `@daanvandenbergh/blogkit`, checks every post has a translation and its own
+  (and, if you use `@daanvandenbergh/scribekit`, checks every post has a translation and its own
   localized hero for each locale). Report-only by default; run it with `/i18nkit-sweep`.
 - **`i18nkit-add-locale`** - adds a new language: edits your `I18n` config, then compiler-drives the
-  translation of every catalog entry `tsc` flags (plus blogkit posts and hardcoded locale lists).
+  translation of every catalog entry `tsc` flags (plus scribekit posts and hardcoded locale lists).
   Run it with `/i18nkit-add-locale`.
 
 Wire them into Claude Code with **symlinks**, so they track the installed package version - an
@@ -157,24 +159,38 @@ export async function activeLocale() {
 ## React
 
 Wrap your app in the provider, passing the resolved locale and what to do when it changes (the provider
-writes the locale cookie for you first, then calls `onChange` - do navigation/refresh there):
+writes the locale cookie for you first, then calls `onChange` - do the navigation there):
 
 ```tsx
 // app/providers.tsx
 "use client";
+import { usePathname, useRouter } from "next/navigation";
 import { I18nProvider } from "@daanvandenbergh/i18nkit/react";
 import "@daanvandenbergh/i18nkit/styles.css"; // for <LanguagePicker>
 import { i18n } from "./i18n";
 
 export function Providers({ locale, children }) {
-    // e.g. in Next.js: const router = useRouter(); onChange={() => router.refresh()}
+    const router = useRouter();
+    const pathname = usePathname();
+    // URL-routed site (the default): the path prefix decides the locale, so navigate to the new
+    // locale's URL. Writing the cookie alone would NOT switch locale on an already-prefixed page.
     return (
-        <I18nProvider i18n={i18n} locale={locale} onChange={() => location.reload()}>
+        <I18nProvider
+            i18n={i18n}
+            locale={locale}
+            onChange={(next) => router.push(i18n.switchLocalePath(pathname, next))}
+        >
             {children}
         </I18nProvider>
     );
 }
 ```
+
+> **Cookie-only sites** (locale resolved purely from the cookie, no `/nl/…` URL prefixes) can skip
+> `switchLocalePath` and use `onChange={() => router.refresh()}` (or `location.reload()`): a re-render
+> re-reads the cookie. But with URL routing - the default `"prefix-except-default"`, and `"prefix-all"`
+> - the prefix in the URL wins over the cookie, so `<LanguagePicker>` switches locale only if `onChange`
+> navigates via `switchLocalePath`. A bare reload/refresh reloads the same prefixed URL and does nothing.
 
 Read and switch the locale with the hooks, and drop in the picker:
 
