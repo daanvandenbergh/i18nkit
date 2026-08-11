@@ -1,6 +1,6 @@
 {
     "name": "@daanvandenbergh/i18nkit",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Type-safe i18n for TypeScript - miss a translation and it's a compile error. Framework-agnostic core, optional React layer, and a Claude Code skill that sweeps for untranslated strings.",
     "type": "module",
     "author": "Daan van den Bergh",
