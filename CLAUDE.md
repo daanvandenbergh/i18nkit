@@ -47,95 +47,21 @@ resolution all live on the `I18n` core (`src/i18n/`) and are reached from `react
 `i18n.resolveLocale`, `i18n.localizeHref`, `i18n.translator`; the React layer does **not** re-implement
 any of them. Own it where the domain lives, not where it is first used.
 
-## Coding Standards
-- Dont use `—`, instead use `-`.
-- Use 4 spaces as 1 indent level.
-- Write in commercial grade typescript which is ready for production.
-- Ensure each function, class, method, interface, interface property has a docstring defining their behaviour.
-- Never use @ts-ignore, @ts-nocheck, or similar directives that suppress real errors. `@ts-expect-error` is banned in library/source code too, with ONE exception: dedicated type-safety test files (`*.test-d.ts` / `*.test-d.tsx`), where `@ts-expect-error` *asserts* that an invalid construct is correctly rejected by the compiler. There it verifies type safety rather than hiding a bug - and `tsc` fails on an unused directive, so a regression breaks `npm run typecheck`. These files are validated by `tsc` (they are excluded from the vitest run glob), never executed.
-- Place test files in a `tests/` subdirectory next to the code under test - never alongside the source files. Example: tests for `src/i18n/*.ts` live in `src/i18n/tests/*.test.ts`, tests for `src/*.ts` live in `src/tests/*.test.ts`.
+@node_modules/@daanvandenbergh/claudekit/rules/ts_coding_standards.md
+@node_modules/@daanvandenbergh/claudekit/rules/core_principles.md
+@node_modules/@daanvandenbergh/claudekit/rules/workflow.md
+@node_modules/@daanvandenbergh/claudekit/rules/todo.md
+@node_modules/@daanvandenbergh/claudekit/rules/ts_modular_coding.md
+@node_modules/@daanvandenbergh/claudekit/skills/ts/audit-tests/claude-rules.md
+@node_modules/@daanvandenbergh/claudekit/rules/active_sessions.md
 
-## Core Principles
-
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.  
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.  
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
-
-## Workflow Orchestration
-
-### 1. Plan Mode Default
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately — don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
-
-### 2. Subagent Strategy
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One task per subagent for focused execution
-
-### 3. Self-Improvement Loop
-- After ANY correction from the user: update `claude/memory/lessons.md` with the pattern
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
-
-### 4. Verification Before Done
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
-
-### 5. Demand Elegance (Balanced)
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes — don't over-engineer
-- Challenge your own work before presenting it
-
-### 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests — then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
-
-## Task Management
-
-1. **Plan First**: Write plan to `claude/tasks/plans.md` with checkable items  
-2. **Verify Plan**: Check in before starting implementation  
-3. **Track Progress**: Mark items complete as you go  
-4. **Explain Changes**: High-level summary at each step  
-5. **Document Results**: Add review section to `claude/tasks/plans.md`  
-6. **Capture Lessons**: Update `claude/memory/lessons.md` after corrections  
-
-## Deferred Work (TODO.md)
-`TODO.md` (repo root) tracks work that is needed but cannot be done yet - blocked on a
-missing prerequisite, a file or entrypoint that does not exist, or a later step. When you
-hit such a case, do NOT silently skip it: add a `- [ ]` item to `TODO.md` describing the
-work and what unblocks it. This is not only code - capture **real-world / external
-prerequisites** too, on your own initiative and without being asked. In particular, whenever
-a change **asserts or relies on a fact that is not yet true** - a legal or registration action
-(registering a trade name or entity, appointing a role), an external account, mailbox, DNS
-record or domain, a vendor or dashboard setting, or any manual ops step - add the item that
-makes it true. Rule of thumb: if the code now claims something the real world has not caught
-up to (e.g. the README states the package is published to npm before it actually is), that
-gap is a `TODO.md` item by default. When you have verified an item from the
-list is done, mark it `- [x]`, then delete the line - finished items must not linger. Keep the
-list to genuinely-pending, actionable items.
-
-**Write each item as a copy-paste-ready prompt.** Phrase every `- [ ]` so it can be pasted
-verbatim into a fresh Claude Code session and fixed with no other context. State what to do, the
-exact files/paths/functions involved, what is currently wrong or missing, what "done" looks like,
-and any command to run or check to verify. Be clear, descriptive, and detailed enough to act on
-cold - assume the session has none of the context you have now; a stub like "fix the schema" is
-not enough.
-
-## Unit Tests
-After writing any code, write meticulous unit tests. This is critical, non-negotiable.
-- Test every single edge case - happy path, error path, boundaries, empty/null inputs, malformed data.
-- Aim for 100% coverage. Every branch, every line.
-- Write as many tests as needed - never skimp on tests to save effort.
-- Code without its tests is unfinished.
+## Agent Storage Directory
+Agent storage - memory, tasks/plans, active sessions, reports, assets - lives in `.agent/` at
+the repo root. This overrides every imported rule and every skill (claudekit, scribekit, ...)
+wherever they say `claude/` - read and write `.agent/` instead: `.agent/memory/`,
+`.agent/tasks/plans.md`, `.agent/active_sessions.md`, `.agent/reports/`,
+`.agent/scribekit-hero/`, and so on. Never create a top-level `claude/` directory.
+(`.claude/` - with the dot - is Claude Code's own config directory and is unrelated.)
 
 ## Web Testing
 - After editing or developing any HTML (pages, components, markup), always inspect and

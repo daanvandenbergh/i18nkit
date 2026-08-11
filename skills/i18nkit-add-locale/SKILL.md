@@ -162,7 +162,7 @@ the picker shows just the label - fine, but say so, and mention a custom `render
    - the **scribekit result** (posts created / handed off, hero locale gaps, or "not detected");
    - the **compile-invisible coverage line**: hardcoded-list leads fixed or left as advice, and the
      picker-flag note.
-   Offer to save a long report to `claude/reports/i18nkit-add-locale-<code>.md`.
+   Offer to save a long report to `.agent/reports/i18nkit-add-locale-<code>.md`.
 
 ## Notes
 

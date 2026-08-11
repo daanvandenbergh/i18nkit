@@ -1,6 +1,6 @@
 # i18nkit
 
-![i18nkit - type-safe i18n for TypeScript](claude/scribekit-hero/readme/hero.png)
+![i18nkit - type-safe i18n for TypeScript](.agent/scribekit-hero/readme/hero.png)
 
 **Universal, 100% type-safe i18n for TypeScript sites.** Declare your locales once and the compiler
 guarantees every string is translated into every language - add a locale and TypeScript lights up at

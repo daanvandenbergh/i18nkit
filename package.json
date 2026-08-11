@@ -66,8 +66,8 @@
         }
     },
     "devDependencies": {
-        "@daanvandenbergh/claude-code-utils": "^1.0.1",
-        "@daanvandenbergh/scribekit": "^1.0.0",
+        "@daanvandenbergh/claudekit": "^1.0.6",
+        "@daanvandenbergh/scribekit": "^1.7.2",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "@vitest/coverage-v8": "^3.2.7",
