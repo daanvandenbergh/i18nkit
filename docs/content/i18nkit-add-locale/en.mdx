@@ -1,0 +1,107 @@
+---
+title: "/i18nkit-add-locale"
+description: "Reference for the i18nkit-add-locale skill: add one locale to the I18n config, let tsc enumerate every entry to translate, and close the gaps it cannot see."
+tab: "Reference"
+group: "Skills"
+order: 2
+icon: "workflow"
+keywords:
+    - i18nkit-add-locale
+    - add a language
+    - translations
+    - claude code skill
+image: "/assets/docs/i18nkit-add-locale/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+`/i18nkit-add-locale` extends a project already built on i18nkit to one new language. It makes a
+single edit - the new entry in your `I18n` config's `locales` map - and that edit grows the locale
+union `L`, so `tsc` reports every catalog entry still missing the new key as a compile error. That
+error list is the worklist: exact, exhaustive, and produced by the compiler rather than by a search.
+The skill then fills it with real translations, loops the typecheck to green, and checks the two
+places the compiler cannot see. Entries built with `i18n.uniform()` never appear, because they
+already cover every locale by construction.
+
+## Install
+
+From your project root, after installing the package:
+
+```bash
+mkdir -p .claude/skills
+ln -s "../../node_modules/@daanvandenbergh/i18nkit/skills/i18nkit-add-locale" ".claude/skills/i18nkit-add-locale"
+```
+
+Restart Claude Code, then run `/i18nkit-add-locale` to confirm it is picked up. See
+[Claude Code skills](/agent-skills) for the full setup, including the monorepo variant.
+
+## Usage
+
+```
+/i18nkit-add-locale <locale> [endonym]
+```
+
+| Argument | What it does | Default |
+| --- | --- | --- |
+| `locale` | The new locale code (`de`, `fr`, `pt-BR`, `ja`). | Required. If it is missing, the skill asks which language to add instead of guessing. |
+| `endonym` | The locale's own native name, used as the picker `label`. | The skill supplies the correct native name and shows it for confirmation before editing anything. |
+
+## What it does
+
+- **Finds the config and resolves the entry.** Locates your `new I18n({ locales, default })`
+  instance, reads the existing codes and the default, then decides `label` (the endonym), `htmlLang`
+  (the document subtag and URL prefix) and `locale` (the full `Intl` formatting locale), omitting each
+  when the value it defaults to is already right. It states the resolved entry before editing.
+- **Adds the locale, and nothing else.** One edit to the `locales` map, placed where it should appear
+  in the picker, since insertion order is picker order. `default` is never changed.
+- **Runs the typecheck to get the worklist.** `npm run typecheck`, falling back to `npx tsc --noEmit`.
+  Every `defineTextCatalog`, `defineText` and `LanguageText` entry missing the new locale now errors,
+  grouped by file. Zero errors means every entry is already covered.
+- **Translates every entry.** Inline for a handful of files, otherwise sharded across parallel agents.
+  Each agent reads the sibling locales first to match tone and register, and translates for meaning
+  rather than word for word. Structure is preserved exactly: parameterized entries keep the parameter
+  types and arity of their siblings, every `${...}` expression is reused verbatim, split rich text
+  keeps its fragment count, and HTML entities become literal Unicode. Brand names, endonyms and
+  `i18n.uniform()` entries are left alone.
+- **Flags what it is not sure about.** A slogan, a legally loaded phrase, domain jargon or a string
+  with a tight length constraint gets a best draft plus a `needs-review` entry with `file:line` and a
+  one-line reason. It never leaves a blank and never confidently guesses legal or brand copy.
+- **Closes the compiler-invisible half.** A bundled scanner lists, for each
+  `@daanvandenbergh/scribekit` post folder, the body file the new locale needs beside the default and whether the post has a `hero.js` whose locale map must gain an entry.
+  It also surfaces hardcoded locale lists - `generateStaticParams`, hreflang and sitemap builders,
+  middleware matchers, locale switches - that name codes as literals and so do not follow `L`. Every
+  line is a lead, confirmed by reading the file.
+- **Verifies and reports.** A final green typecheck, then the config diff, the translated-entry
+  count, the `needs-review` list, the scribekit result, and a note if the new locale has no built-in
+  picker flag.
+
+## When to use it
+
+Reach for `/i18nkit-add-locale` when the codebase is already wrapped and you want one more language
+in it. Run [/i18nkit-sweep](/i18nkit-sweep) first if bare, untranslated strings might still exist: a
+string outside a catalog does not move `L`, so the compiler cannot see it and the worklist would skip
+it. The skill is re-runnable - run it again for the same code later to pick up copy added since.
+
+## Examples
+
+```
+/i18nkit-add-locale de
+```
+
+```
+/i18nkit-add-locale fr "Français"
+```
+
+```
+/i18nkit-add-locale pt-BR "Português (Brasil)"
+```
+
+The first lets the skill supply `Deutsch` and confirm it with you. The second and third set the
+picker label yourself, which is worth doing for a regional variant where the native name is a
+judgment call.
+
+## Related
+
+- [Claude Code skills](/agent-skills) - both skills and the full install.
+- [/i18nkit-sweep](/i18nkit-sweep) - wrap bare strings first, so the compiler can see them.
+- [Adding a language](/adding-a-locale) - the same workflow done by hand.
+- [Writing translations](/translations) - catalogs, `defineText` and `uniform`.

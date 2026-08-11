@@ -1,0 +1,114 @@
+---
+title: "/i18nkit-sweep"
+description: "Reference for the i18nkit-sweep skill: find every user-facing string that never entered a catalog, report it with file and line, and optionally wrap it."
+tab: "Reference"
+group: "Skills"
+order: 1
+icon: "check"
+keywords:
+    - i18nkit-sweep
+    - hardcoded strings
+    - audit
+    - claude code skill
+image: "/assets/docs/i18nkit-sweep/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+`/i18nkit-sweep` reads your source and reports every user-facing string that reaches the UI as a
+bare literal instead of resolving through a translator. The type system already covers everything
+inside a catalog: add a locale and `tsc` flags each entry you still owe. It cannot see a string that
+never entered a catalog - that string has no per-locale keys, so nothing forces it to keep up. This
+skill is the search for that blind spot: a team of agents reads the files, judges each literal
+against one question, and reports what it finds. Report-only by default.
+
+## Install
+
+From your project root, after installing the package:
+
+```bash
+mkdir -p .claude/skills
+ln -s "../../node_modules/@daanvandenbergh/i18nkit/skills/i18nkit-sweep" ".claude/skills/i18nkit-sweep"
+```
+
+Restart Claude Code, then type `/i18nkit-sweep` to confirm it is loaded. See
+[Claude Code skills](/agent-skills) for the full setup, including the monorepo variant.
+
+## Usage
+
+```
+/i18nkit-sweep [area] [--fix]
+```
+
+| Argument | What it does | Default |
+| --- | --- | --- |
+| `area` | Scopes the sweep to a path under the source root, for example `components` or `"app/(dashboard)"`. | Omitted - sweeps all of `src/`, or the project's user-facing source root. |
+| `--fix` | After reporting, wraps the confident violations and re-runs the typecheck. | Off - the run reports and changes no files. |
+
+## What it does
+
+- **Learns the locale set.** Finds your `new I18n({ locales, default })` config and reads the locale
+  keys and the default. That set is the axis everything else is measured against.
+- **Resolves the file set.** All `.ts` and `.tsx` under the area, excluding `tests/`, `*.test.*`,
+  `*.test-d.*` and `*.d.ts`. The file that constructs the `I18n` instance is read for its locales
+  but not swept: its only user-facing strings are the endonym labels, which are never translated.
+  A blog area managed by `@daanvandenbergh/scribekit` is exempt too, since its copy is localized
+  file-per-language rather than through a translator.
+- **Builds a heat map.** Runs its bundled `find_candidates.sh`, which lists suspect files (they
+  render JSX but never touch a translator seam) and literal leads (copy attributes, same-line JSX
+  text, toast and error strings, metadata and JSON-LD fields). Leads are starting points, not
+  verdicts.
+- **Reads every file.** The file set is sharded into groups of roughly 8 to 12 files and swept by
+  parallel agents, each reading its files in full - multi-line JSX text and metadata objects hide
+  from grep. Each string is judged by one question: if you shipped one more locale tomorrow, would
+  this exact string have to change? Every file comes back either with findings or marked clean, so
+  coverage is provable.
+- **Verifies the doubtful.** Findings marked medium or low confidence are re-checked against the
+  source before they reach the report. False positives are dropped.
+- **Reports.** A verdict line, violations grouped by file with line, snippet, reason and suggested
+  fix, and a tally by category: `jsx-text`, `attribute`, `toast-or-error`, `metadata`, `json-ld`,
+  `backend-copy`. A coverage line names what was swept and what was skipped.
+- **Checks scribekit parity.** If the project uses scribekit, the sweep also verifies that each post
+  folder has a body for every configured locale and that each post's `hero.js` `text` map covers
+  every locale, so no language renders a hero in another language. This runs on every sweep, with or
+  without `--fix`, and is never auto-fixed - writing a post body is the author's job.
+- **Fixes, under `--fix` only.** It extends the file's `defineTextCatalog`, wires a translator and
+  replaces the literal - but only for high-confidence findings, and only where the wrap compiles. A
+  bare literal is the default locale's text; on a multi-locale project a string whose other
+  translations are not genuinely known is listed as needs-translation and left alone rather than
+  guessed. `backend-copy` is never auto-edited: a job or webhook has no request-scoped locale, so
+  the seam is yours to choose. After any edit, `npm run typecheck` must be green.
+
+## When to use it
+
+Use it before adding a language, so the compiler-driven work is the whole of the work. Use it after
+a feature lands, scoped to the area you just touched. Use it any time the question is "does anything
+still bypass the translation system?".
+
+Reach for [/i18nkit-add-locale](/i18nkit-add-locale) instead when you are adding the language
+itself - it edits the config and translates what `tsc` then flags. The two pair up: sweep first,
+then add. [Adding a language](/adding-a-locale) is the same workflow done by hand.
+
+## Examples
+
+```
+/i18nkit-sweep
+```
+
+```
+/i18nkit-sweep components
+```
+
+```
+/i18nkit-sweep "app/(dashboard)" --fix
+```
+
+The first sweeps the whole source root and reports. The second narrows to one directory. The third
+sweeps the dashboard routes and wraps the confident violations, leaving everything uncertain in the
+report for you to decide.
+
+## Related
+
+- [Claude Code skills](/agent-skills) - both skills and the full install.
+- [/i18nkit-add-locale](/i18nkit-add-locale) - the sibling skill that adds the language.
+- [Adding a language](/adding-a-locale) - the manual workflow.
+- [Writing translations](/translations) - catalogs, `defineText` and translators.

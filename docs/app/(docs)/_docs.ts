@@ -12,5 +12,5 @@ export const docs = new Docs({
         "100% type-safe i18n for TypeScript. Declare your locales once and the compiler flags every string still missing a translation.",
     // Tab and group order for a stable sidebar. Fill from the corpus front-matter (`tab` / `group`).
     tabs: ["Guide", "Reference"],
-    groups: ["Start", "Guides", "Reference"],
+    groups: ["Start", "Guides", "Reference", "Skills"],
 });

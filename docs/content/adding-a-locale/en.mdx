@@ -112,6 +112,6 @@ Two things live outside the type system, so check them by hand:
 - **Content outside catalogs.** MDX or CMS bodies with one file per language, and per-locale images.
   Nothing in a `.mdx` file is a catalog entry, so nothing there errors.
 
-Both are exactly what the `/i18nkit-add-locale` skill automates. It runs this same loop - edit the
-config, drive `tsc` to green, translate every flagged entry - and then hunts the hardcoded lists and
-per-locale content the compiler cannot reach. See [Claude Code skills](/agent-skills) to install it.
+Both are exactly what [`/i18nkit-add-locale`](/i18nkit-add-locale) automates. It runs this same loop -
+edit the config, drive `tsc` to green, translate every flagged entry - and then hunts the hardcoded lists
+and per-locale content the compiler cannot reach. See [Claude Code skills](/agent-skills) to install it.
