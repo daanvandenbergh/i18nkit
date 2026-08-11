@@ -1,8 +1,8 @@
 /**
  * Pure locale detection, config-driven and framework-free: narrow an untrusted value (a cookie or
  * `[lang]` segment) to a real locale, and pick the best locale from an HTTP `Accept-Language`
- * header. Reached as `i18n.resolveLocale(...)` / `i18n.matchAcceptLanguage(...)`, but exported
- * standalone too so edge middleware can call them without constructing an instance.
+ * header. Reached as `i18n.resolveLocale(...)` / `i18n.matchAcceptLanguage(...)`; these functions are
+ * internal to the module and are not re-exported from the package entry.
  */
 import type { ResolvedLocale } from "./types.js";
 

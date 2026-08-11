@@ -16,7 +16,8 @@ updated: "2026-08-11"
 ---
 
 i18nkit ships two Claude Code skills, [`/i18nkit-sweep`](/i18nkit-sweep) and
-[`/i18nkit-add-locale`](/i18nkit-add-locale). This page explains why they exist and installs them. Each
+[`/i18nkit-add-locale`](/i18nkit-add-locale). This page explains why they exist and how to install
+them. Each
 skill's own page documents its arguments and behaviour.
 
 The type system covers every string that is already inside it: a catalog entry has one required property
@@ -44,9 +45,19 @@ If your layout differs - a monorepo, a hoisted or non-standard `node_modules` - 
 absolute target that node resolves for you:
 
 ```bash
+mkdir -p .claude/skills
 pkg="$(dirname "$(node -p "require.resolve('@daanvandenbergh/i18nkit/package.json')")")"
 for skill in i18nkit-sweep i18nkit-add-locale; do
     ln -s "$pkg/skills/$skill" "$(pwd)/.claude/skills/$skill"
+done
+```
+
+Developing against a local checkout of this repo instead? Link the source folders:
+
+```bash
+mkdir -p .claude/skills
+for skill in i18nkit-sweep i18nkit-add-locale; do
+    ln -s "../../skills/$skill" ".claude/skills/$skill"
 done
 ```
 
@@ -65,9 +76,10 @@ Two paths printed means Claude Code will pick up both commands. Restart Claude C
 | [`/i18nkit-sweep`](/i18nkit-sweep) | You want to know which user-facing strings still bypass i18nkit. Report-only unless you pass `--fix`. |
 | [`/i18nkit-add-locale`](/i18nkit-add-locale) | You are adding a language and want every catalog entry, post body, and hardcoded locale list brought with it. |
 
-Run the sweep first when both apply. A string that never entered a catalog is invisible to the compiler,
-so the add-locale worklist would skip it - sweeping first pulls those strings in, and the new locale then
-lands on all of them at once.
+Run the sweep first when both apply. A literal that never entered a catalog is invisible to the
+compiler, so the add-locale worklist would skip it. The sweep reports those literals; wrap them (pass
+`--fix` for the high-confidence ones, and note that on a multi-locale project it leaves anything whose
+other translations are unknown for you) and the new locale then lands on all of them at once.
 
 [Adding a language](/adding-a-locale) walks the same workflow by hand if you would rather drive it
 yourself.

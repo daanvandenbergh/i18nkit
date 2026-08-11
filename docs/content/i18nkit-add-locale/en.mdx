@@ -31,7 +31,8 @@ mkdir -p .claude/skills
 ln -s "../../node_modules/@daanvandenbergh/i18nkit/skills/i18nkit-add-locale" ".claude/skills/i18nkit-add-locale"
 ```
 
-Restart Claude Code, then run `/i18nkit-add-locale` to confirm it is picked up. See
+Check the link resolves with `ls .claude/skills/i18nkit-add-locale/SKILL.md`, then restart Claude
+Code so it loads the command. See
 [Claude Code skills](/agent-skills) for the full setup, including the monorepo variant.
 
 ## Usage
@@ -54,9 +55,10 @@ Restart Claude Code, then run `/i18nkit-add-locale` to confirm it is picked up. 
 - **Adds the locale, and nothing else.** One edit to the `locales` map, placed where it should appear
   in the picker, since insertion order is picker order. `default` is never changed.
 - **Runs the typecheck to get the worklist.** `npm run typecheck`, falling back to `npx tsc --noEmit`.
-  Every `defineTextCatalog`, `defineText` and `LanguageText` entry missing the new locale now errors,
-  grouped by file. Zero errors means every entry is already covered.
-- **Translates every entry.** Inline for a handful of files, otherwise sharded across parallel agents.
+  Every `defineTextCatalog`, `defineText`, `LanguageText` and `LanguageTextFn` entry missing the new
+  locale now errors, grouped by file. Zero errors means every entry is already covered.
+- **Translates every entry.** Inline for a handful of files, otherwise sharded across parallel agents
+  in shards of roughly 8 to 12 files, about 10 to 12 agents at a time.
   Each agent reads the sibling locales first to match tone and register, and translates for meaning
   rather than word for word. Structure is preserved exactly: parameterized entries keep the parameter
   types and arity of their siblings, every `${...}` expression is reused verbatim, split rich text
@@ -65,21 +67,32 @@ Restart Claude Code, then run `/i18nkit-add-locale` to confirm it is picked up. 
 - **Flags what it is not sure about.** A slogan, a legally loaded phrase, domain jargon or a string
   with a tight length constraint gets a best draft plus a `needs-review` entry with `file:line` and a
   one-line reason. It never leaves a blank and never confidently guesses legal or brand copy.
-- **Closes the compiler-invisible half.** A bundled scanner lists, for each
-  `@daanvandenbergh/scribekit` post folder, the body file the new locale needs beside the default and whether the post has a `hero.js` whose locale map must gain an entry.
-  It also surfaces hardcoded locale lists - `generateStaticParams`, hreflang and sitemap builders,
-  middleware matchers, locale switches - that name codes as literals and so do not follow `L`. Every
-  line is a lead, confirmed by reading the file.
-- **Verifies and reports.** A final green typecheck, then the config diff, the translated-entry
-  count, the `needs-review` list, the scribekit result, and a note if the new locale has no built-in
-  picker flag.
+- **Scans for what the compiler cannot see.** A bundled scanner lists, for each
+  `@daanvandenbergh/scribekit` post folder, the body file the new locale needs beside the default,
+  and whether the post has a `hero.js` whose locale map must gain an entry. It also greps the source
+  root's `.ts` and `.tsx` for the existing locale codes written as quoted string literals - which is
+  where `generateStaticParams`, hreflang and sitemap builders, middleware matchers and locale
+  switches usually show up. Lists living outside `.ts`/`.tsx` are not covered. Every line is a lead,
+  confirmed by reading the file.
+- **Closes that half.** For scribekit it adds the locale to the Blog config's `locales[]`, cross-checks
+  it against the `I18n` set, creates each missing `<slug>/<code>.mdx` with the front-matter human
+  fields and body translated and the slug unchanged, extends each post's `hero.js` `text` map reusing
+  the post's shared gradient, renders the per-locale JPEG and points the new body's `image:` at it.
+  Several posts fan out one agent each; long articles go to the author rather than being
+  machine-translated. For the hardcoded lists it adds the new code and notes where deriving the list
+  from `i18n.list` would prevent the next recurrence.
+- **Verifies and reports.** A final green typecheck plus the project's build if it has one, then the
+  config diff, the translated-entry count, the `needs-review` list, the scribekit result, a coverage
+  line naming which hardcoded-list leads were fixed and which were left as advice, and a note if the
+  new locale has no built-in picker flag. A long report can be saved to a file on request.
 
 ## When to use it
 
 Reach for `/i18nkit-add-locale` when the codebase is already wrapped and you want one more language
 in it. Run [/i18nkit-sweep](/i18nkit-sweep) first if bare, untranslated strings might still exist: a
 string outside a catalog does not move `L`, so the compiler cannot see it and the worklist would skip
-it. The skill is re-runnable - run it again for the same code later to pick up copy added since.
+it. The skill is re-runnable - run it again for the same code later to pick up copy added since. On a
+re-run it detects the locale is already configured and skips straight to the typecheck worklist.
 
 ## Examples
 

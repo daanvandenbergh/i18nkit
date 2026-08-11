@@ -311,4 +311,4 @@ Everything hangs off the `I18n` instance.
 ## Type-safety notes
 
 - **A missing translation is always a compile error.** This is the guarantee: grow your locale set and every incomplete `defineTextCatalog` / `defineText` fails to compile.
-- **Caveat:** a *typo'd, unknown* locale key (e.g. `de` when your set is `en`/`nl`) is silently accepted inside a `define*` call - TypeScript's generic constraints don't run excess-property checks. Missing keys - the case that matters for coverage - are always caught.
+- **Caveats.** Three things the types don't catch, all inherent to the design: a *typo'd, unknown* locale key (e.g. `de` when your set is `en`/`nl`) is silently accepted inside a `define*` call, because TypeScript's generic constraints don't run excess-property checks; one entry's per-locale builders may have *inconsistent argument signatures* (each arm is typed independently, and the call site is still checked against the intersection); and the React hooks default their type parameter to `string`, so pass your union (`useTranslator<Locale>()`) for the precise type. Missing keys - the case that matters for coverage - are always caught.

@@ -15,11 +15,9 @@ updated: "2026-08-11"
 ---
 
 `/i18nkit-sweep` reads your source and reports every user-facing string that reaches the UI as a
-bare literal instead of resolving through a translator. The type system already covers everything
-inside a catalog: add a locale and `tsc` flags each entry you still owe. It cannot see a string that
-never entered a catalog - that string has no per-locale keys, so nothing forces it to keep up. This
-skill is the search for that blind spot: a team of agents reads the files, judges each literal
-against one question, and reports what it finds. Report-only by default.
+bare literal instead of resolving through a translator - the blind spot the type system cannot see,
+because a string outside a catalog has no per-locale keys to enforce. Report-only by default. See
+[Claude Code skills](/agent-skills) for why the two skills exist.
 
 ## Install
 
@@ -42,7 +40,10 @@ Restart Claude Code, then type `/i18nkit-sweep` to confirm it is loaded. See
 | Argument | What it does | Default |
 | --- | --- | --- |
 | `area` | Scopes the sweep to a path under the source root, for example `components` or `"app/(dashboard)"`. | Omitted - sweeps all of `src/`, or the project's user-facing source root. |
-| `--fix` | After reporting, wraps the confident violations and re-runs the typecheck. | Off - the run reports and changes no files. |
+| `--fix` | After reporting, wraps the confident violations, then runs `npm run typecheck` and reports it green. | Off - the run reports and changes no files. |
+
+`--fix` may appear anywhere in the argument string; everything left after stripping it is treated as
+the area.
 
 ## What it does
 
@@ -52,7 +53,9 @@ Restart Claude Code, then type `/i18nkit-sweep` to confirm it is loaded. See
   `*.test-d.*` and `*.d.ts`. The file that constructs the `I18n` instance is read for its locales
   but not swept: its only user-facing strings are the endonym labels, which are never translated.
   A blog area managed by `@daanvandenbergh/scribekit` is exempt too, since its copy is localized
-  file-per-language rather than through a translator.
+  file-per-language rather than through a translator, as are placeholder or demo `_data.ts`-style
+  content and i18nkit's own package files. Email and product/catalog modules *are* swept, as
+  `backend-copy`: that copy reaches real users even though it never renders in a component.
 - **Builds a heat map.** Runs its bundled `find_candidates.sh`, which lists suspect files (they
   render JSX but never touch a translator seam) and literal leads (copy attributes, same-line JSX
   text, toast and error strings, metadata and JSON-LD fields). Leads are starting points, not
@@ -64,19 +67,27 @@ Restart Claude Code, then type `/i18nkit-sweep` to confirm it is loaded. See
   coverage is provable.
 - **Verifies the doubtful.** Findings marked medium or low confidence are re-checked against the
   source before they reach the report. False positives are dropped.
-- **Reports.** A verdict line, violations grouped by file with line, snippet, reason and suggested
-  fix, and a tally by category: `jsx-text`, `attribute`, `toast-or-error`, `metadata`, `json-ld`,
-  `backend-copy`. A coverage line names what was swept and what was skipped.
-- **Checks scribekit parity.** If the project uses scribekit, the sweep also verifies that each post
-  folder has a body for every configured locale and that each post's `hero.js` `text` map covers
-  every locale, so no language renders a hero in another language. This runs on every sweep, with or
-  without `--fix`, and is never auto-fixed - writing a post body is the author's job.
+- **Reports.** A verdict line, violations grouped by file with line, snippet, reason, category,
+  confidence and suggested fix, ordered high to low confidence within each file, and a tally by
+  category: `jsx-text`, `attribute`, `toast-or-error`, `metadata`, `json-ld`, `backend-copy`. A
+  coverage line names what was swept and what was skipped. A long report can be saved to a file on
+  request.
 - **Fixes, under `--fix` only.** It extends the file's `defineTextCatalog`, wires a translator and
   replaces the literal - but only for high-confidence findings, and only where the wrap compiles. A
   bare literal is the default locale's text; on a multi-locale project a string whose other
   translations are not genuinely known is listed as needs-translation and left alone rather than
   guessed. `backend-copy` is never auto-edited: a job or webhook has no request-scoped locale, so
-  the seam is yours to choose. After any edit, `npm run typecheck` must be green.
+  the seam is yours to choose. Every medium or low finding comes back as needs-your-call. After any
+  edit, `npm run typecheck` must be green; if it is not, the offending wrap is fixed or reverted
+  rather than left in the tree.
+- **Checks scribekit parity.** If the project uses scribekit, the sweep runs four more checks and
+  cross-checks the Blog `locales[]` set against the `I18n` locales, reporting any divergence: a
+  post folder **missing a body** for a configured locale; an **orphan translation** (a
+  `<locale>.mdx` with no default-locale body and no `post.mdx` fallback); a **hero locale gap**
+  (a configured locale absent from a post's `hero.js` `text` map, so that language renders a blank
+  or wrong hero); and a **broken hero reference** (a missing rendered JPEG, or a body whose `image:`
+  points at another locale's file). This runs after any fixes, with or without `--fix`, and is never
+  auto-fixed - writing a post body is the author's job.
 
 ## When to use it
 

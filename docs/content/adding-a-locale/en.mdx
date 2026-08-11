@@ -20,7 +20,9 @@ page walks the whole loop: add the locale, run `tsc`, translate everything it fl
 green.
 
 **Before you start:** a project already on i18nkit - an `I18n` instance and at least one catalog. See
-[Installation](/installation) and [Writing Translations](/translations).
+[Installation](/installation) and [Writing Translations](/translations). If bare, unwrapped strings
+might still be scattered through the codebase, run [`/i18nkit-sweep`](/i18nkit-sweep) first: a string
+outside a catalog never enters `L`, so the compiler will not list it.
 
 ## Add the locale to your config
 
@@ -34,7 +36,7 @@ export const i18n = new I18n({
     locales: {
         en: { label: "English" },
         nl: { label: "Nederlands" },
-        de: { label: "Deutsch" }, // the only line you write by hand
+        de: { label: "Deutsch" }, // the only config line you write by hand
     },
     default: "en",
 });
@@ -48,16 +50,17 @@ or `pt-BR` needs nothing more. Set them when the key is not the tag you want:
 ## Ask the compiler for the worklist
 
 ```bash
-npx tsc --noEmit
+npm run typecheck   # or: npx tsc --noEmit
 ```
 
 The keys of `locales` are what infer the locale union `L`, so `L` grew from `"en" | "nl"` to
 `"en" | "nl" | "de"`. Every translation type is a mapped type over `L` - `LanguageText<L>` is
-`{ [K in L]: string }` - which means each one now has a required `de` property. Every catalog entry
-that does not carry a German string stops satisfying the constraint on `defineTextCatalog`, and fails
+`{ readonly [K in L]: string }` - which means each one now has a required `de` property. The worklist
+covers every `defineTextCatalog` entry, every standalone `defineText`, and any value you annotated
+`LanguageText<Locale>` or `LanguageTextFn<Locale, A>`. Each stops satisfying its constraint and fails
 at its own call site.
 
-You will see errors of this shape, one per incomplete catalog entry, reported at the entry's own line:
+Catalog entries produce errors of this shape, reported at the entry's own line:
 
 ```
 app/customers/text.ts(9,5): error TS2322: Type '{ en: string; nl: string; }' is not assignable to
@@ -66,14 +69,19 @@ app/customers/text.ts(9,5): error TS2322: Type '{ en: string; nl: string; }' is 
   'LanguageTextFn<"en" | "nl" | "de", readonly never[]>'.
 ```
 
+A standalone `defineText` surfaces differently - `error TS2769: No overload matches this call`,
+reported at the argument - but the cause is the same missing `de` property.
+
 That is the worklist. It is exhaustive and it costs nothing to regenerate.
 
 ## Work through the list
 
-Each error points at one entry in one file. Add the missing locale to it:
+Each error points at one catalog entry or one standalone text. Add the missing locale to it:
 
 ```ts
 // app/customers/text.ts
+import { i18n } from "../i18n.js";
+
 export const TX = i18n.defineTextCatalog({
     title: { en: "Customers", nl: "Klanten", de: "Kunden" },
     deleted: {
@@ -99,19 +107,23 @@ Rerun `tsc` as you go; the list shrinks.
 
 ## Stop when tsc is green
 
-A clean `npx tsc --noEmit` means no string routed through i18nkit is missing a translation. That is
+A clean `npm run typecheck` means no string routed through i18nkit is missing a translation. That is
 the guarantee, and it holds for everything the types can see.
 
 ## What the types cannot see
 
-Two things live outside the type system, so check them by hand:
+Three things live outside the type system, so check them by hand:
 
 - **Hardcoded locale lists.** Anywhere your app names locale codes literally: static params or route
   generation, sitemap entries, hreflang arrays, middleware. Where you can, read `i18n.list` instead of
   a literal array and the next locale is free.
 - **Content outside catalogs.** MDX or CMS bodies with one file per language, and per-locale images.
   Nothing in a `.mdx` file is a catalog entry, so nothing there errors.
+- **The picker flag.** A new locale may have no built-in flag, in which case
+  [the picker](/react) shows its label alone. Pass `renderFlag` to supply one.
 
-Both are exactly what [`/i18nkit-add-locale`](/i18nkit-add-locale) automates. It runs this same loop -
-edit the config, drive `tsc` to green, translate every flagged entry - and then hunts the hardcoded lists
-and per-locale content the compiler cannot reach. See [Claude Code skills](/agent-skills) to install it.
+[`/i18nkit-add-locale`](/i18nkit-add-locale) automates this loop - edit the config, drive the
+typecheck to green, translate every flagged entry - and then hunts the hardcoded locale lists for any
+project. For the content half it covers `@daanvandenbergh/scribekit` blogs specifically (post bodies
+plus each post's `hero.js` locale map); it reports and skips when scribekit is not detected, and hands
+long bodies to a human author. See [Claude Code skills](/agent-skills) to install it.

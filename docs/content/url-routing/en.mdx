@@ -44,10 +44,14 @@ i18n.localizeHref("/pricing", "nl"); // "/nl/pricing"
 Pass `strategy: "prefix-all"` instead and every locale is prefixed, so nothing lives at a bare URL:
 
 ```ts
-const i18n = new I18n({ /* ...same... */ strategy: "prefix-all" });
+const prefixed = new I18n({
+    locales: { en: { label: "English" }, nl: { label: "Nederlands" } },
+    default: "en",
+    strategy: "prefix-all",
+});
 
-i18n.localizeHref("/pricing", "en"); // "/en/pricing"
-i18n.localizeHref("/pricing", "nl"); // "/nl/pricing"
+prefixed.localizeHref("/pricing", "en"); // "/en/pricing"
+prefixed.localizeHref("/pricing", "nl"); // "/nl/pricing"
 ```
 
 ## Build links and read paths
@@ -56,7 +60,7 @@ Every routing helper is a method on the instance, so it already knows your local
 prefixes.
 
 ```ts
-i18n.prefixFor("nl");                       // "/nl"   ("" for the default locale)
+i18n.prefixFor("nl");                       // "/nl"   ("" for the default locale under "prefix-except-default")
 i18n.localizeHref("/pricing", "nl");        // "/nl/pricing"
 i18n.switchLocalePath("/nl/pricing", "en"); // "/pricing"
 i18n.stripLocalePrefix("/nl/pricing");      // "/pricing"
@@ -69,6 +73,10 @@ i18n.hreflangAlternates("/pricing", "nl");  // { canonical, languages }
 `"prefix-except-default"`, an href that is not site-absolute (`mailto:`, `#hash`, `//cdn...`), a
 non-localized target, or a path that already starts with a locale segment. A query or hash survives
 (`/pricing?plan=pro` becomes `/nl/pricing?plan=pro`), and `"/"` becomes `"/nl"`, never `"/nl/"`.
+
+`stripLocalePrefix` is the exception to "the method knows your strategy": it strips any locale
+segment regardless of `strategy`, so under `"prefix-all"` it returns a bare path that is not a
+servable URL. Use it to compare paths (nav active state), and `switchLocalePath` to navigate.
 
 In React, `<LocaleLink>` calls `localizeHref` for you with the active locale - see [React](/react).
 
@@ -83,18 +91,18 @@ localized. `localizeHref`, `switchLocalePath` and `hreflangAlternates` all honou
 
 ## Handle locales with a region subtag
 
-A locale whose `htmlLang` carries a region or script subtag gets a lowercased URL prefix, which is
-the conventional casing for URLs:
+The URL prefix is always the locale's `htmlLang`, lowercased - which only shows up when the subtag
+carries case, and lowercase is the conventional casing for URLs:
 
 ```ts
-const i18n = new I18n({
+const regional = new I18n({
     locales: { en: { label: "English", htmlLang: "en-GB" } },
     default: "en",
     strategy: "prefix-all",
 });
 
-i18n.prefixFor("en");   // "/en-gb"
-i18n.htmlLangFor("en"); // "en-GB"  - for <html lang> and hreflang keys
+regional.prefixFor("en");   // "/en-gb"
+regional.htmlLangFor("en"); // "en-GB"  - for <html lang> and hreflang keys
 ```
 
 Segment parsing is case-insensitive, so inbound `/en-GB/pricing` and `/en-gb/pricing` both resolve to
@@ -104,7 +112,7 @@ the same locale. Plain lowercase subtags (`en`, `nl`, `de`) are unaffected.
 
 `hreflangAlternates(path, locale)` returns `{ canonical, languages }`. `canonical` is the active
 locale's own URL; `languages` is keyed by each locale's `htmlLang` in its configured casing, plus an
-`x-default` entry pointing at the default locale's URL. Adding a locale extends every page
+`x-default` entry pointing at the default locale's URL. Adding a locale extends every localized page
 automatically.
 
 ```ts
@@ -117,6 +125,27 @@ i18n.hreflangAlternates("/pricing", "nl");
 //         "x-default": "https://example.com/pricing",
 //     },
 // }
+```
+
+A path under `nonLocalizedPrefixes` has a single real URL, so it yields no per-locale alternates at
+all - only an `x-default`:
+
+```ts
+i18n.hreflangAlternates("/api/users", "nl");
+// {
+//     canonical: "https://example.com/api/users",
+//     languages: { "x-default": "https://example.com/api/users" },
+// }
+```
+
+Plug the return value straight into your framework's metadata - it is already the right shape:
+
+```ts
+// app/pricing/page.ts
+export function generateMetadata() {
+    const { canonical, languages } = i18n.hreflangAlternates("/pricing", "nl");
+    return { alternates: { canonical, languages } };
+}
 ```
 
 This method **throws when the instance has no `origin`** - alternates must be absolute URLs, and

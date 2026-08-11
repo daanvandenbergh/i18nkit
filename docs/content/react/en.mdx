@@ -59,8 +59,6 @@ already sees the new value.
 
 ## Navigate on change, or nothing happens
 
-This is the one thing worth getting right the first time.
-
 The discriminator is whether the locale appears in your URLs. If your app emits and routes
 locale-prefixed paths, the path wins over the cookie: your server reads the locale out of
 `/nl/pricing`, not out of the cookie, so `onChange` must navigate -
@@ -103,12 +101,13 @@ takes a type parameter that defaults to `string`. Pass your union for precision:
 ## Drop in the language picker
 
 `<LanguagePicker />` works with no props. It manages its own open state, dismisses on outside
-pointer-down or Escape (Escape returns focus to the trigger), carries the ARIA wiring, and lists each
-locale by its endonym label from your config.
+pointer-down or Escape (focus returns to the trigger on Escape and after picking a locale; an outside
+pointer-down leaves focus where the user clicked), carries the ARIA wiring, and lists each locale by
+its endonym label from your config, in the order you declared them in `locales`.
 
 | Prop | Type | Default |
 | --- | --- | --- |
-| `changeLanguageLabel` | `string` | `"Change language"` - the trigger's accessible name |
+| `changeLanguageLabel` | `string` | `"Change language"` - prefixes the trigger's accessible name (`"Change language: Nederlands"`) and labels the panel |
 | `headingLabel` | `string` | `"Language"`; pass `""` to hide the heading |
 | `renderFlag` | `(locale: string) => ReactNode` | none |
 | `className` | `string` | none; appended after `i18nkit-picker` |
@@ -129,27 +128,33 @@ import { LanguagePicker, localeFlag } from "@daanvandenbergh/i18nkit/react";
 
 They are inline SVG rather than emoji flags because emoji flags render as bare letters on
 Windows/Chrome. `Flag` is exported too, if you want one outside the picker:
-`<Flag code="nl" size={24} />`. Or supply your own renderer entirely:
+`<Flag code="nl" size={24} />`. Its `size` defaults to `20`, and it returns `null` for a locale with
+no known flag. Or supply your own renderer entirely:
 `renderFlag={(loc) => <MyFlag code={loc} />}`.
 
 ## Restyle the picker
 
 The shipped stylesheet reads eight custom properties, each with a fallback, so you override only what
-you care about.
+you care about. One of them, `--i18nkit-color-muted`, backs two different greys.
+
+Going dark means overriding the backgrounds and borders together, not just the surface - the hover
+fallback is a light grey, so leaving it out puts pale text on a pale row:
 
 ```css
 :root {
     --i18nkit-color-primary: #7c3aed;
     --i18nkit-color-surface: #0b1220;
     --i18nkit-color-ink: #e8edf5;
+    --i18nkit-color-hover: #16203a;
+    --i18nkit-color-border: #1e293b;
 }
 ```
 
 The [API reference](/api-reference) lists all eight with their fallback values.
 
 For anything the properties do not cover, the class names are stable: `i18nkit-picker` and its
-`__trigger`, `__flag`, `__current`, `__caret`, `__panel`, `__heading`, `__item`, `__label`, `__check`
-elements.
+`__trigger`, `__flag`, `__current`, `__caret` (plus the `--open` modifier while the panel is open),
+`__panel`, `__heading`, `__item`, `__label`, `__check` elements.
 
 ## Link between pages
 

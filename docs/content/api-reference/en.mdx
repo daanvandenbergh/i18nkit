@@ -26,6 +26,7 @@ narrative versions, see [Writing translations](/translations), [Detecting the lo
 | `@daanvandenbergh/i18nkit` | The `I18n` class, `createTranslator`, `translate`, and the core types. Zero dependencies. |
 | `@daanvandenbergh/i18nkit/react` | `I18nProvider`, four hooks, `LanguagePicker`, `LocaleLink`, `Flag`, `localeFlag`. |
 | `@daanvandenbergh/i18nkit/styles.css` | The stylesheet for `LanguagePicker`. |
+| `@daanvandenbergh/i18nkit/package.json` | The package manifest, exported so tooling can resolve it. |
 
 The package is **ESM only** - there is no CommonJS build. `react` and `react-dom` are declared as
 **optional** peer dependencies at `>=18`; you need them only for the `/react` entry.
@@ -104,8 +105,8 @@ excludes `/api` and `/api/x`, but not `/apis`.
 | `default` is not a key of `locales` | `I18n: default locale "x" is not one of the configured locales (en, nl).` |
 | Two locales resolve to the same case-insensitive `htmlLang` | `I18n: locales "a" and "b" both resolve to htmlLang "en" (case-insensitive); each locale needs a distinct htmlLang.` |
 
-The third check exists because URL segments are matched case-insensitively, so a clash would leave one
-locale unreachable by URL.
+Locale segments are matched case-insensitively, so two locales cannot share a case-insensitive
+`htmlLang`.
 
 ## Instance fields
 
@@ -161,10 +162,10 @@ than chaining them with `??` or `||`.
 | `prefixFor(locale: L): string` | `""` for the default locale under `"prefix-except-default"`, otherwise `/` plus the lowercased `htmlLang` (`"/en-gb"`). |
 | `localeForSegment(segment: string): L \| null` | The locale a path segment denotes, matched case-insensitively against `htmlLang`. `null` when it is not a locale. |
 | `isLocalizedPath(pathname: string): boolean` | `false` when `pathname` equals or sits under a `nonLocalizedPrefixes` entry. |
-| `localizeHref(href: string, locale: L): string` | `/pricing` becomes `/nl/pricing`. Returns `href` untouched when the prefix is empty, `href` is not site-absolute (or starts with `//`), the path is non-localized, or the first segment is already a locale. `"/"` becomes `"/nl"`, never `"/nl/"`. |
-| `switchLocalePath(pathname: string, next: L): string` | Strips the current locale prefix, then applies `next`'s. |
+| `localizeHref(href: string, locale: L): string` | `/pricing` becomes `/nl/pricing`. Returns `href` untouched when the prefix is empty, `href` is not site-absolute (or starts with `//`), the path is non-localized, or the first segment is already a locale. The prefix is inserted before the first `?` or `#`. `"/"` becomes `"/nl"`, never `"/nl/"`. |
+| `switchLocalePath(pathname: string, next: L): string` | Strips the current locale prefix, then applies `next`'s. Returns the stripped path untouched when `next`'s prefix is empty or the path is non-localized. `"/"` becomes `"/nl"`. |
 | `stripLocalePrefix(pathname: string): string` | Removes a leading locale segment regardless of strategy; `"/nl"` becomes `"/"`. |
-| `hreflangAlternates(path, locale): { canonical: string; languages: Record<string, string> }` | One entry per locale keyed by `htmlLang`, plus `x-default` pointing at the default locale's URL. **Throws when `origin` is unset.** |
+| `hreflangAlternates(path: string, locale: L): { canonical: string; languages: Record<string, string> }` | One entry per locale keyed by `htmlLang`, plus `x-default` pointing at the default locale's URL. **Throws when `origin` is unset.** |
 
 `hreflangAlternates` reduces `path` through `stripLocalePrefix` first, so passing an already-prefixed
 pathname is fine. A non-localized path yields a single canonical with only an `x-default`.
@@ -202,7 +203,7 @@ that tree. `Flag` and `localeFlag` render in a client tree, and in a Server Comp
 
 `setLocale(next)` no-ops when `next` already equals `locale`. Otherwise it writes
 `` `${i18n.cookie}=${encodeURIComponent(next)}; path=/; max-age=31536000; samesite=lax` `` (one year,
-site-wide, readable by client script) and *then* calls `onChange`. The context value is memoized on
+site-wide, readable by client script) when a `document` exists, and then calls `onChange` either way. The context value is memoized on
 `[i18n, locale]`, and `onChange` is held in a ref so an inline prop does not bust that memo.
 
 ### Hooks
@@ -270,9 +271,15 @@ Set these anywhere up the tree. Each has a built-in fallback.
 | `--i18nkit-color-ring` | `rgba(37, 99, 235, 0.18)` |
 | `--i18nkit-shadow` | `0 16px 38px rgba(11, 27, 54, 0.16)` |
 
+A dark theme needs the backgrounds and borders overridden together - the `--i18nkit-color-hover`
+fallback is a light grey, so leaving it out puts pale text on a pale row:
+
 ```css
 :root {
     --i18nkit-color-primary: #7c3aed;
     --i18nkit-color-surface: #0b1220;
+    --i18nkit-color-ink: #e8edf5;
+    --i18nkit-color-hover: #16203a;
+    --i18nkit-color-border: #1e293b;
 }
 ```

@@ -16,8 +16,8 @@ updated: "2026-08-11"
 ---
 
 By the end of this page you have i18nkit installed, an `I18n` instance you own, a catalog of two
-entries, and a Dutch string printed from an English source file. The last step adds a third locale so
-you can watch the compiler list the work it created.
+entries, and a Dutch string printed to your terminal from a catalog that also holds the English one.
+The last step adds a third locale so you can watch the compiler list the work it created.
 
 You need a TypeScript project. i18nkit is ESM only (the package has no CommonJS build), so your
 project needs `"type": "module"` in `package.json`, or a bundler that resolves ESM.
@@ -28,9 +28,14 @@ project needs `"type": "module"` in `package.json`, or a bundler that resolves E
 npm install @daanvandenbergh/i18nkit
 ```
 
-That is the whole install. The core has no dependencies. `react` and `react-dom` are declared as
-**optional** peer dependencies: npm will not install them for you, and you only need them if you
-import from `@daanvandenbergh/i18nkit/react`. Everything on this page uses the core entry.
+That is the whole install of the library. The core has no dependencies. `react` and `react-dom` are
+declared as **optional** peer dependencies at `>=18`: npm will not install them for you, and you only
+need them if you import from `@daanvandenbergh/i18nkit/react`. Everything on this page uses the core
+entry.
+
+The package also ships two Claude Code skills under
+`node_modules/@daanvandenbergh/i18nkit/skills/`, which npm does not wire up for you. See
+[Claude Code skills](/agent-skills) if you want them.
 
 ## 2. Create the instance
 
@@ -63,10 +68,16 @@ formatting) defaults to `htmlLang`, then the key. So `en: { label: "English" }` 
 Spell them out when you want a different value than the key, typically a regional formatting locale:
 
 ```ts
-locales: {
-    en: { label: "English",    htmlLang: "en", locale: "en-GB" },
-    nl: { label: "Nederlands", htmlLang: "nl", locale: "nl-NL" },
-},
+// app/i18n.ts
+import { I18n } from "@daanvandenbergh/i18nkit";
+
+export const i18n = new I18n({
+    locales: {
+        en: { label: "English",    htmlLang: "en", locale: "en-GB" },
+        nl: { label: "Nederlands", htmlLang: "nl", locale: "nl-NL" },
+    },
+    default: "en",
+});
 ```
 
 ## 3. Write your first catalog
@@ -75,7 +86,7 @@ Text lives in a catalog next to the code that renders it. Create `app/customers/
 
 ```ts
 // app/customers/text.ts
-import { i18n } from "../i18n";
+import { i18n } from "../i18n.js";
 
 export const TX = i18n.defineTextCatalog({
     title: { en: "Customers", nl: "Klanten" },
@@ -99,13 +110,21 @@ entry covers every locale in your union.
 Bind a translator to a locale, then call it:
 
 ```ts
-import { i18n } from "./i18n";
-import { TX } from "./customers/text";
+// app/main.ts
+import { i18n } from "./i18n.js";
+import { TX } from "./customers/text.js";
 
 const translate = i18n.translator("nl");
 
-translate(TX.title);          // "Klanten"
-translate(TX.deleted, "Ada"); // "Ada verwijderd"
+console.log(translate(TX.title));          // "Klanten"
+console.log(translate(TX.deleted, "Ada")); // "Ada verwijderd"
+```
+
+Run it and the terminal prints:
+
+```text
+Klanten
+Ada verwijderd
 ```
 
 The same `translate` call handles both shapes. Pass a static entry and you get its string; pass a
@@ -124,22 +143,26 @@ i18n.translate(TX.title, "nl"); // "Klanten"
 Add a third locale to `app/i18n.ts`:
 
 ```ts
-locales: {
-    en: { label: "English" },
-    nl: { label: "Nederlands" },
-    de: { label: "Deutsch" },
-},
+// app/i18n.ts
+import { I18n } from "@daanvandenbergh/i18nkit";
+
+export const i18n = new I18n({
+    locales: {
+        en: { label: "English" },
+        nl: { label: "Nederlands" },
+        de: { label: "Deutsch" },
+    },
+    default: "en",
+});
 ```
 
-`npx tsc --noEmit` is the check. Both catalog entries now fail on their own line, because the locale
+`npm run typecheck` (or `npx tsc --noEmit`) is the check. Both catalog entries now fail on their own line, because the locale
 union grew and neither covers `de`. Add the German strings and `tsc` goes quiet.
 
 Run it in CI and an untranslated string cannot reach production: no extraction step, no JSON files to
 sync, no runtime validation to trust. [Adding a language](/adding-a-locale) walks the whole loop.
 
-## Next steps
+## Related
 
-- [Writing translations](/translations) - `defineText`, `uniform`, and how to shape parameterized copy.
-- [Detecting the locale](/locale-detection) - pick the visitor's locale from a cookie or `Accept-Language`.
-- [React](/react) - the provider, the hooks, and the language picker.
 - [API reference](/api-reference) - every option, method, component, and type in one place.
+- [Claude Code skills](/agent-skills) - symlinking the two shipped skills into `.claude/skills/`.

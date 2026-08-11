@@ -15,7 +15,8 @@ image: "/assets/docs/translations/hero.en.jpg"
 updated: "2026-08-11"
 ---
 
-Every piece of user-facing copy in i18nkit is an object with one string per locale. This page covers
+Every piece of user-facing copy in i18nkit is an object with one entry per locale - a string, or a
+function that builds one. This page covers
 how to author those objects and how to resolve one to a string. It assumes you already have an `I18n`
 instance exported from somewhere in your app, as set up in [Installation](/installation).
 
@@ -27,7 +28,7 @@ compile.
 
 ```ts
 // app/customers/text.ts
-import { i18n } from "../i18n";
+import { i18n } from "../i18n.js";
 
 export const TX = i18n.defineTextCatalog({
     title: { en: "Customers", nl: "Klanten" },
@@ -46,8 +47,10 @@ When a string interpolates a runtime value, write a builder function per locale 
 string:
 
 ```ts
-// app/customers/text.ts
+// app/customers/text.ts - the same catalog, with a third entry
 export const TX = i18n.defineTextCatalog({
+    title: { en: "Customers", nl: "Klanten" },
+    empty: { en: "No customers yet", nl: "Nog geen klanten" },
     range: {
         en: (from: number, to: number, total: number) => `Showing ${from}-${to} of ${total}`,
         nl: (from: number, to: number, total: number) => `${from}-${to} van ${total} weergegeven`,
@@ -60,8 +63,8 @@ The Dutch sentence ends with its verb, and the English one starts with it. A pla
 it. A function per locale gives each language its own sentence.
 
 The second reason is typing. `defineTextCatalog` preserves the literal type of what you pass, so the
-argument tuple of each builder survives. `translate(TX.range, 1, 20)` is a compile error, and so is
-passing a string where a number belongs.
+argument tuple of each builder survives. With a translator bound below, `translate(TX.range, 1, 20)`
+is a compile error, and so is passing a string where a number belongs.
 
 ## Define one standalone text
 
@@ -69,7 +72,8 @@ For a single text that does not belong in a catalog, `i18n.defineText` gives the
 guarantee. It has two overloads, static and parameterized:
 
 ```ts
-import { i18n } from "./i18n";
+// app/settings/text.ts
+import { i18n } from "../i18n.js";
 
 export const settingsHeading = i18n.defineText({ en: "Settings", nl: "Instellingen" });
 
@@ -85,7 +89,8 @@ Some strings are the same in every language: brand names, product names, a symbo
 builds the entry for you from the instance's locale codes.
 
 ```ts
-export const TX = i18n.defineTextCatalog({
+// app/shell/text.ts
+export const SHELL = i18n.defineTextCatalog({
     brand: i18n.uniform("Acme"),
 });
 ```
@@ -120,7 +125,7 @@ parameterized text like any other, and for a two-form language that is one line 
 ```ts
 export const itemCount = i18n.defineText({
     en: (n: number) => (n === 1 ? "1 item" : `${n} items`),
-    nl: (n: number) => (n === 1 ? "1 item" : `${n} items`),
+    nl: (n: number) => (n === 1 ? "1 artikel" : `${n} artikelen`),
 });
 ```
 

@@ -19,7 +19,7 @@ Every request needs one locale before you can render anything. i18nkit gives you
 the instance to work that out: one for a stored choice, one for the browser's preference. You supply
 the cookie value and the header string; the core never touches the request itself.
 
-## The rule: a stored choice wins, otherwise the browser decides
+## Decide which source wins
 
 A visitor who has picked a language keeps it. A first-time visitor gets whatever their browser asks
 for. That is two branches, and the branch is on whether the cookie exists:
@@ -58,14 +58,18 @@ i18n.resolveLocale(undefined);   // "en"
 `Accept-Language` header down to one of your locales.
 
 It splits the header on commas and reads each entry's `q` weight (`q=` is matched
-case-insensitively, defaults to `1`, is clamped to the range `0..1`, and an unparseable weight counts
-as `0`). Entries weighted `0` or lower are dropped. The rest sort by weight, descending, with a stable
-sort - so tags of equal weight keep the order the browser sent them in.
+case-insensitively, defaults to `1`, and is clamped to the range `0..1`). A weight that parses to
+nothing (`q=abc`, `q=`) counts as `0`; one with trailing garbage keeps its leading number, so
+`q=0.9xyz` weighs `0.9`. Entries weighted `0` or lower are dropped, and so are empty entries left by a
+stray comma. A `*` wildcard matches no locale, so it is skipped rather than honoured. The rest sort by
+weight, descending, with a stable sort - so tags of equal weight keep the order the browser sent them
+in.
 
 Then, for each tag in that ranking, two attempts: an exact case-insensitive match against a locale's
 `htmlLang` first, then a primary-subtag match. So `en-AU` finds a configured `en`, and a configured
-`en-GB` wins over a bare `en` locale when the header asks for `en-GB` specifically. If no tag matches
-anything, you get `default`.
+`en-GB` wins over a bare `en` locale when the header asks for `en-GB` specifically. It works the other
+way too - a bare `zh` request finds a configured `zh-Hant` - and when several locales share a primary
+subtag, the first one you declared wins. If no tag matches anything, you get `default`.
 
 ```ts
 // locales: en, nl
@@ -84,11 +88,12 @@ The one place i18nkit writes the cookie is the React provider, when `setLocale` 
 `path=/`, `max-age=31536000` (one year) and `samesite=lax`, and deliberately not `httpOnly`, because
 the client has to be able to set it. See [React](/react) for that flow.
 
-## A worked example: a Next.js Server Component
+## Detect the locale in a Next.js Server Component
 
 ```ts
+// app/locale.ts
 import { cookies, headers } from "next/headers";
-import { i18n } from "@/app/i18n";
+import { i18n } from "./i18n.js";
 
 export async function activeLocale() {
     const cookie = (await cookies()).get(i18n.cookie)?.value;
