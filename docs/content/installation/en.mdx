@@ -1,0 +1,145 @@
+---
+title: "Installation"
+description: "Install i18nkit, create your I18n instance, write a first catalog, and get a translated string on screen in five steps."
+tab: "Guide"
+group: "Start"
+order: 2
+icon: "rocket"
+keywords:
+    - install
+    - setup
+    - quickstart
+    - catalog
+    - typescript
+image: "/assets/docs/installation/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+By the end of this page you have i18nkit installed, an `I18n` instance you own, a catalog of two
+entries, and a Dutch string printed from an English source file. The last step adds a third locale so
+you can watch the compiler list the work it created.
+
+You need a TypeScript project. i18nkit is ESM only (the package has no CommonJS build), so your
+project needs `"type": "module"` in `package.json`, or a bundler that resolves ESM.
+
+## 1. Install the package
+
+```bash
+npm install @daanvandenbergh/i18nkit
+```
+
+That is the whole install. The core has no dependencies. `react` and `react-dom` are declared as
+**optional** peer dependencies: npm will not install them for you, and you only need them if you
+import from `@daanvandenbergh/i18nkit/react`. Everything on this page uses the core entry.
+
+## 2. Create the instance
+
+Your locale set is declared once, in one file, and everything else reads from it. Create
+`app/i18n.ts`:
+
+```ts
+// app/i18n.ts
+import { I18n } from "@daanvandenbergh/i18nkit";
+
+export const i18n = new I18n({
+    locales: {
+        en: { label: "English" },
+        nl: { label: "Nederlands" },
+    },
+    default: "en",
+});
+
+export type Locale = keyof typeof i18n.locales; // "en" | "nl"
+```
+
+Export both. The instance is how you author and resolve text; the `Locale` type is the union
+TypeScript inferred from the keys of `locales`, and you will annotate function parameters with it.
+
+`label` is the locale's endonym - its name in its own language - shown in the language picker. It is
+the only required field, because the two others fall back to the map key: `htmlLang` (used for
+`<html lang>` and URL prefixes) defaults to the key, and `locale` (used for `Intl` date and number
+formatting) defaults to `htmlLang`, then the key. So `en: { label: "English" }` is a complete entry.
+
+Spell them out when you want a different value than the key, typically a regional formatting locale:
+
+```ts
+locales: {
+    en: { label: "English",    htmlLang: "en", locale: "en-GB" },
+    nl: { label: "Nederlands", htmlLang: "nl", locale: "nl-NL" },
+},
+```
+
+## 3. Write your first catalog
+
+Text lives in a catalog next to the code that renders it. Create `app/customers/text.ts`:
+
+```ts
+// app/customers/text.ts
+import { i18n } from "../i18n";
+
+export const TX = i18n.defineTextCatalog({
+    title: { en: "Customers", nl: "Klanten" },
+    deleted: {
+        en: (name: string) => `${name} deleted`,
+        nl: (name: string) => `${name} verwijderd`,
+    },
+});
+```
+
+Two entries, two shapes. `title` is static: one string per locale. `deleted` is parameterized: one
+builder function per locale, so each language decides where the name goes. There is no `{{name}}`
+placeholder syntax to learn - it is a template literal in a normal function, and TypeScript infers
+the arguments from it.
+
+`defineTextCatalog` returns the object unchanged. All it does is impose a type constraint that every
+entry covers every locale in your union.
+
+## 4. Resolve it to a string
+
+Bind a translator to a locale, then call it:
+
+```ts
+import { i18n } from "./i18n";
+import { TX } from "./customers/text";
+
+const translate = i18n.translator("nl");
+
+translate(TX.title);          // "Klanten"
+translate(TX.deleted, "Ada"); // "Ada verwijderd"
+```
+
+The same `translate` call handles both shapes. Pass a static entry and you get its string; pass a
+parameterized entry with its arguments and the builder runs.
+
+For a single static lookup you can skip the binding:
+
+```ts
+i18n.translate(TX.title, "nl"); // "Klanten"
+```
+
+`i18n.translate` takes static text only. Parameterized entries go through a translator.
+
+## 5. Prove the guarantee
+
+Add a third locale to `app/i18n.ts`:
+
+```ts
+locales: {
+    en: { label: "English" },
+    nl: { label: "Nederlands" },
+    de: { label: "Deutsch" },
+},
+```
+
+`npx tsc --noEmit` is the check. Both catalog entries now fail on their own line, because the locale
+union grew and neither covers `de`. Add the German strings and `tsc` goes quiet.
+
+Run it in CI and an untranslated string cannot reach production: no extraction step, no JSON files to
+sync, no runtime validation to trust. [Adding a language](/adding-a-locale) walks the whole loop.
+
+## Next steps
+
+- [Writing translations](/translations) - `defineText`, `uniform`, and how to shape parameterized copy.
+- [Detecting the locale](/locale-detection) - pick the visitor's locale from a cookie or `Accept-Language`.
+- [React](/react) - the provider, the hooks, and the language picker.
+- [API reference](/api-reference) - every option, method, component, and type in one place.

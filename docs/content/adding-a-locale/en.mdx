@@ -1,0 +1,117 @@
+---
+title: "Adding a Language"
+description: "Add one locale to your I18n config, run tsc, and work through the exact list of translations the compiler hands you."
+tab: "Guide"
+group: "Guides"
+order: 2
+icon: "workflow"
+keywords:
+    - add a locale
+    - new language
+    - translation coverage
+    - tsc
+    - compile error
+image: "/assets/docs/adding-a-locale/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+Adding a language is one line of config followed by a to-do list the compiler writes for you. This
+page walks the whole loop: add the locale, run `tsc`, translate everything it flags, stop when it is
+green.
+
+**Before you start:** a project already on i18nkit - an `I18n` instance and at least one catalog. See
+[Installation](/installation) and [Writing Translations](/translations).
+
+## Add the locale to your config
+
+One new key in `locales`:
+
+```ts
+// app/i18n.ts
+import { I18n } from "@daanvandenbergh/i18nkit";
+
+export const i18n = new I18n({
+    locales: {
+        en: { label: "English" },
+        nl: { label: "Nederlands" },
+        de: { label: "Deutsch" }, // the only line you write by hand
+    },
+    default: "en",
+});
+```
+
+A new entry needs only `label` - the language's own name, shown in the picker. `htmlLang` defaults to
+the key, and `locale` (the `Intl` formatting locale) defaults to `htmlLang`. So a BCP-47 key like `de`
+or `pt-BR` needs nothing more. Set them when the key is not the tag you want:
+`de: { label: "Deutsch", locale: "de-AT" }`.
+
+## Ask the compiler for the worklist
+
+```bash
+npx tsc --noEmit
+```
+
+The keys of `locales` are what infer the locale union `L`, so `L` grew from `"en" | "nl"` to
+`"en" | "nl" | "de"`. Every translation type is a mapped type over `L` - `LanguageText<L>` is
+`{ [K in L]: string }` - which means each one now has a required `de` property. Every catalog entry
+that does not carry a German string stops satisfying the constraint on `defineTextCatalog`, and fails
+at its own call site.
+
+You will see errors of this shape, one per incomplete catalog entry, reported at the entry's own line:
+
+```
+app/customers/text.ts(9,5): error TS2322: Type '{ en: string; nl: string; }' is not assignable to
+  type 'LanguageText<"en" | "nl" | "de"> | LanguageTextFn<"en" | "nl" | "de", readonly never[]>'.
+  Property 'de' is missing in type '{ en: string; nl: string; }' but required in type
+  'LanguageTextFn<"en" | "nl" | "de", readonly never[]>'.
+```
+
+That is the worklist. It is exhaustive and it costs nothing to regenerate.
+
+## Work through the list
+
+Each error points at one entry in one file. Add the missing locale to it:
+
+```ts
+// app/customers/text.ts
+export const TX = i18n.defineTextCatalog({
+    title: { en: "Customers", nl: "Klanten", de: "Kunden" },
+    deleted: {
+        en: (name: string) => `${name} deleted`,
+        nl: (name: string) => `${name} verwijderd`,
+        de: (name: string) => `${name} gelöscht`,
+    },
+    brand: i18n.uniform("Acme"), // already covers every locale - leave it alone
+});
+```
+
+Three things to watch:
+
+- **Keep every `${...}` placeholder.** A builder that drops one compiles fine and ships a sentence
+  with a hole in it.
+- **Keep the parameter list identical across locales.** Word order inside the template literal is
+  yours to change - that is the point of a builder per language - but callers pass one argument list
+  for all of them, so the parameters themselves must match.
+- **Skip `i18n.uniform(...)` entries.** They generate a value for every locale already, so they never
+  appear in the worklist and never need editing.
+
+Rerun `tsc` as you go; the list shrinks.
+
+## Stop when tsc is green
+
+A clean `npx tsc --noEmit` means no string routed through i18nkit is missing a translation. That is
+the guarantee, and it holds for everything the types can see.
+
+## What the types cannot see
+
+Two things live outside the type system, so check them by hand:
+
+- **Hardcoded locale lists.** Anywhere your app names locale codes literally: static params or route
+  generation, sitemap entries, hreflang arrays, middleware. Where you can, read `i18n.list` instead of
+  a literal array and the next locale is free.
+- **Content outside catalogs.** MDX or CMS bodies with one file per language, and per-locale images.
+  Nothing in a `.mdx` file is a catalog entry, so nothing there errors.
+
+Both are exactly what the `/i18nkit-add-locale` skill automates. It runs this same loop - edit the
+config, drive `tsc` to green, translate every flagged entry - and then hunts the hardcoded lists and
+per-locale content the compiler cannot reach. See [Claude Code skills](/agent-skills) to install it.

@@ -1,0 +1,82 @@
+# Deploy the i18nkit docs site (Next.js static export) to GitHub Pages.
+#
+# The Next app lives in `docs/` (the repo root is the library package), so every `run` step works from
+# there and the artifact is uploaded from `docs/out`.
+#
+# `actions/configure-pages@v6` outputs the correct `base_path` for the Pages URL - "/i18nkit" for this
+# project site. We pass it to the build as NEXT_PUBLIC_BASE_PATH so the app owns the base path: both
+# `docs/next.config.mjs` (routes/assets/next.js links) AND the hero <img> in `_docs-image.tsx` read the
+# same value, which is what makes raw /assets hero paths resolve under the subpath.
+
+name: Deploy to GitHub Pages
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+# Least-privilege token: only what deploy-pages needs.
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+# One deploy at a time; let an in-flight run finish rather than cancelling it.
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: docs
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+
+            - name: Set up Node
+              uses: actions/setup-node@v7
+              with:
+                  # Next.js 16 requires Node >= 20.9; 22 is the current LTS.
+                  node-version: 22
+                  cache: npm
+                  cache-dependency-path: docs/package-lock.json
+
+            # Outputs `base_path` ("/i18nkit" for this project site).
+            # We do NOT use `static_site_generator: next` here: the app sets its own basePath from
+            # NEXT_PUBLIC_BASE_PATH below, so its hero <img> can read the same value.
+            # `enablement: true` turns Pages on (build type "GitHub Actions") on the first run, so a fresh
+            # repo doesn't fail with "Get Pages site failed / Not Found". If an org policy blocks it,
+            # enable Pages once by hand (Settings -> Pages -> Source: "GitHub Actions") and this is a no-op.
+            - name: Configure Pages
+              id: pages
+              uses: actions/configure-pages@v6
+              with:
+                  enablement: true
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build static export
+              env:
+                  # The app's next.config + hero <img> both read this.
+                  NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+              run: npx --no-install next build
+
+            - name: Upload artifact
+              uses: actions/upload-pages-artifact@v5
+              with:
+                  path: ./docs/out
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v5

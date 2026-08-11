@@ -1,0 +1,125 @@
+---
+title: "Claude Code Skills"
+description: "Install and run the two agent skills i18nkit ships: /i18nkit-sweep to find strings that bypass the type system, and /i18nkit-add-locale to add a language."
+tab: "Guide"
+group: "Guides"
+order: 6
+icon: "check"
+keywords:
+    - claude code
+    - agent skills
+    - sweep
+    - add locale
+    - audit
+image: "/assets/docs/agent-skills/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+i18nkit ships two Claude Code skills, `i18nkit-sweep` and `i18nkit-add-locale`. This page installs them
+and shows what each one does when you invoke it. You need Claude Code and `@daanvandenbergh/i18nkit`
+installed in the project.
+
+The type system covers every string that is already inside it: an entry in a catalog has one required
+property per locale, so a missing translation cannot compile. It cannot see a hardcoded literal that
+never entered a catalog, and it cannot see content that lives outside catalogs entirely - blog bodies,
+hero images, a list of locale codes written out by hand. That is the blind spot, and these two skills
+are what covers it.
+
+## Install the skills
+
+The skills ship inside the published package, so `npm install @daanvandenbergh/i18nkit` already put the
+targets on disk under `node_modules/@daanvandenbergh/i18nkit/skills/`. Link them into `.claude/skills/`:
+
+```bash
+mkdir -p .claude/skills
+# from your project root (assumes .claude/skills/ and node_modules/ share this root):
+for skill in i18nkit-sweep i18nkit-add-locale; do
+    ln -s "../../node_modules/@daanvandenbergh/i18nkit/skills/$skill" ".claude/skills/$skill"
+done
+```
+
+Symlinks rather than copies, because a link tracks the installed package version: `npm update` moves
+the skills forward with it, and there is no copy sitting in your repo to re-sync or diff.
+
+If your layout differs - a monorepo, a hoisted or non-standard `node_modules` - point the links at an
+absolute target that node resolves for you:
+
+```bash
+pkg="$(dirname "$(node -p "require.resolve('@daanvandenbergh/i18nkit/package.json')")")"
+for skill in i18nkit-sweep i18nkit-add-locale; do
+    ln -s "$pkg/skills/$skill" "$(pwd)/.claude/skills/$skill"
+done
+```
+
+Verify both links resolve to a real file:
+
+```bash
+ls .claude/skills/i18nkit-sweep/SKILL.md .claude/skills/i18nkit-add-locale/SKILL.md
+```
+
+Two paths printed means Claude Code will pick up `/i18nkit-sweep` and `/i18nkit-add-locale`.
+
+## Find strings that bypass i18nkit
+
+```
+/i18nkit-sweep [area] [--fix]
+```
+
+The sweep is a negative-space audit. It reads your `I18n` config to learn the locale set, then fans
+parallel agents across every `.ts`/`.tsx` file in scope (`tests/`, `*.test.*`, `*.test-d.*` and
+`*.d.ts` are excluded) and reads each one in full. Your `I18n` config file is read for its locale set
+but not swept: the only user-facing strings in it are the endonym labels, and a language's own name is
+never translated. Grep cannot judge intent, so nothing is decided by pattern match: each string is held
+against one question - if you shipped one more locale tomorrow, would this exact string have to change?
+
+Every violation is reported with `file:line`, the snippet, a category (`jsx-text`, `attribute`,
+`toast-or-error`, `metadata`, `json-ld`, `backend-copy`) and a confidence, plus a per-file clean list
+so coverage is provable. The optional argument scopes the run to one area; omit it to sweep all of
+`src/`.
+
+```
+/i18nkit-sweep components
+/i18nkit-sweep "app/(dashboard)" --fix
+```
+
+It is **report-only by default**. With `--fix` it also wraps the confident violations: the literal
+moves into a co-located `defineTextCatalog` entry, the call site resolves through a translator, and
+`npm run typecheck` runs afterwards to prove the tree still compiles. It only wraps where the result
+is honest - a catalog entry needs a value for every locale, so on a multi-locale project a string
+whose other translations are unknown is listed as needs-translation and left alone rather than filled
+with a guess. Backend copy is never auto-edited, since it needs a locale threaded in from somewhere.
+
+The sweep also checks what `tsc` never sees. If the project uses `@daanvandenbergh/scribekit`, it
+verifies each post folder has a body for every configured locale, and that each post's `hero.js` covers
+every locale so no language renders another language's hero.
+
+## Add a language
+
+```
+/i18nkit-add-locale <locale> [endonym]
+```
+
+The inverse skill, and the compiler does the enumerating. It adds one entry to `locales` in your `I18n`
+config - and only that - which grows the locale union, so `tsc` immediately reports every catalog entry
+still missing the new key. That error list is the worklist. Entries built with `i18n.uniform()` never
+appear, because they already cover every locale.
+
+```
+/i18nkit-add-locale de
+/i18nkit-add-locale pt-BR "Português (Brasil)"
+```
+
+The second argument is the endonym shown in the picker; leave it off and the skill supplies the native
+name and shows it before editing anything. Translation is fanned across parallel agents, one shard of
+files each, preserving parameter types and arity, every `${...}` placeholder, and the fragment count of
+split rich text. Anything genuinely uncertain - a slogan, a legal line, a tight length constraint - is
+flagged `needs-review` with a reason instead of silently guessed. Then `tsc` is looped to green.
+
+Green `tsc` is not the end. The skill then scans for what types cannot reach: scribekit post bodies for
+the new locale and the `hero.js` locale map, and hardcoded locale lists that name codes as literals -
+`generateStaticParams`, hreflang and sitemap builders, middleware matchers, locale switches. Those do
+not follow the locale union, so they stay wrong until someone updates them.
+
+Run `/i18nkit-sweep` first if bare strings might still exist. A string outside a catalog is invisible
+to the compiler, so the add-locale worklist would skip it. [Adding a language](/adding-a-locale) walks
+the same workflow by hand if you would rather drive it yourself.

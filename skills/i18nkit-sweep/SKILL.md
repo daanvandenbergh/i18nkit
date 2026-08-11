@@ -123,7 +123,7 @@ each this task (fill in the shard's files and the resolved rules path):
      json-ld / backend-copy).
    - A **coverage line**: which areas were swept and which were intentionally skipped (so the user
      knows nothing was silently dropped), plus the scribekit-parity result from 3.5.
-   Offer to save the report to `.agent/reports/i18nkit-sweep.md` if the list is long.
+   Offer to save the report to `.agentstore/reports/i18nkit-sweep.md` if the list is long.
 4. **Fix (only under `--fix`; skip this whole step by default).** Apply the fixes per rules.md ("How
    a fix is applied") - extend the file's `defineTextCatalog`, wire a translator via the right seam,
    replace the literal. Touch only the violating lines; do not restructure files. Guards:

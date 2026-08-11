@@ -1,0 +1,22 @@
+/* Base document reset, imported once from the root app/layout.tsx (alongside the package stylesheet).
+   The package styles the docs UI (and scopes box-sizing + the palette font); this resets the document
+   body the app sits in - without `margin: 0` the whole app is inset by the browser's default body
+   margin, and a base font keeps any non-docs pages consistent. */
+* {
+    box-sizing: border-box;
+}
+
+/* The brand palette is scribekit's own blue -> violet -> purple ramp (`--scribekit-*` defaults in its
+   stylesheet), so there is nothing to override here. The logo (app/icon.svg,
+   public/assets/logo-mark.svg) and the hero gradients (content/hero.settings.js,
+   .agentstore/scribekit-hero/readme/hero.settings.js) are coloured off that same ramp - keep them in step. */
+
+body {
+    margin: 0;
+    font-family: var(--scribekit-font-sans, "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+    color: #0b1b36;
+    background: #fff;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}

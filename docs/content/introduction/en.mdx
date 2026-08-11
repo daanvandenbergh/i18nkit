@@ -1,0 +1,93 @@
+---
+title: "Introduction"
+description: "What i18nkit is, how its compile-time coverage guarantee works, and what it deliberately leaves out."
+tab: "Guide"
+group: "Start"
+order: 1
+icon: "sparkles"
+keywords:
+    - i18n
+    - typescript
+    - type safety
+    - translations
+    - locales
+image: "/assets/docs/introduction/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+i18nkit is an i18n library for TypeScript sites where a missing translation is a compile error rather
+than a runtime `undefined`. You declare your locales once, author every user-facing string as an object
+with one entry per locale, and `tsc` tells you which strings you still owe.
+
+## How the guarantee works
+
+Three type-level facts do all the work.
+
+The locale union `L` is inferred from the keys of `locales` in your config. `LanguageText<L>` is a
+mapped type over that union - `{ readonly [K in L]: string }` - so every locale is a **required**
+property. `defineTextCatalog` constrains its argument to `Record<string, LanguageText<L> | ...>`, so an
+entry that omits a locale fails the constraint and errors at the call site.
+
+That is why adding a locale is the interesting case: the config keys grow `L`, and every incomplete
+catalog in the project starts failing at once.
+
+```ts
+// Add "de" to your locales...
+const i18n = new I18n({
+    locales: { en: { label: "English" }, nl: { label: "Nederlands" }, de: { label: "Deutsch" } },
+    default: "en",
+});
+
+// ...and every catalog missing a German string is now a compile error:
+i18n.defineTextCatalog({
+    title: { en: "Customers", nl: "Klanten" },
+    //     ~~~~~ Property 'de' is missing
+});
+```
+
+`defineTextCatalog` is an identity function at runtime - it returns the object you passed it,
+unchanged. All enforcement is the type constraint. There is no runtime validation, no build step, no
+codegen, no extraction pass, and no JSON files to keep in sync. Delete the type layer and the code
+still runs; keep it and the compiler is your coverage report. The full walkthrough lives in
+[Adding a language](/adding-a-locale).
+
+## What it deliberately does not do
+
+Knowing the boundaries up front saves you looking for features that are not there.
+
+- **No interpolation DSL.** No ICU message syntax, no `%s`, no double-brace placeholders. A
+  parameterized string is a builder function per locale, written with native template literals, so
+  each language keeps its own word order. See [Writing translations](/translations).
+- **No built-in pluralization.** A plural is a builder function that branches on the count, per locale.
+  `Intl.PluralRules` is available in every runtime i18nkit targets if you want it.
+- **No key-level runtime fallback.** The types already guarantee a string for every locale, so there is
+  nothing to fall back from. The `default` locale is a *detection* fallback - what an unknown cookie
+  value or an unmatched `Accept-Language` header resolves to - not a per-key one.
+- **No runtime catalog loading.** Catalogs are plain modules you import. Nothing is fetched over the
+  network, so nothing can arrive late or fail.
+- **Catalogs are flat.** One level deep, `Record<string, ...>`. Nested namespaces are not modelled; use
+  one catalog per feature folder, co-located with the code that renders it.
+
+## The one known gap
+
+A *typo'd* locale key inside a `define*` call is accepted silently. If your set is `en` and `nl` and
+you write `de: "..."`, TypeScript does not complain, because it runs no excess-property check when
+verifying that a value satisfies a generic constraint.
+
+*Missing* keys - the case that decides coverage - are always caught. The gap costs you a dead string,
+never a missing translation.
+
+## What is in the package
+
+- A framework-agnostic core with **zero dependencies**: the `I18n` class, locale detection
+  (`Accept-Language`, cookie value), and URL routing helpers. It runs on the server, in the browser,
+  and at the edge.
+- An optional React layer at `@daanvandenbergh/i18nkit/react`: a provider, four hooks, an accessible
+  `<LanguagePicker>`, and a router-agnostic `<LocaleLink>`. `react` and `react-dom` are optional peer
+  dependencies, so the core costs you nothing if you skip it.
+- Two Claude Code skills, shipped in the published package: `i18nkit-sweep` finds user-facing strings
+  that bypass the type system, and `i18nkit-add-locale` adds a language and translates everything the
+  compiler flags. See [Claude Code skills](/agent-skills).
+
+Next: [Installation](/installation) - install the package, create the instance, and render your first
+translated string.

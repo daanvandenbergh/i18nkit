@@ -1,0 +1,108 @@
+---
+title: "Detecting the Locale"
+description: "Pick the visitor's locale on the server from their stored cookie choice, falling back to the Accept-Language header on a first visit."
+tab: "Guide"
+group: "Guides"
+order: 3
+icon: "globe"
+keywords:
+    - locale detection
+    - accept-language
+    - cookie
+    - ssr
+    - server components
+image: "/assets/docs/locale-detection/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+Every request needs one locale before you can render anything. i18nkit gives you two pure functions on
+the instance to work that out: one for a stored choice, one for the browser's preference. You supply
+the cookie value and the header string; the core never touches the request itself.
+
+## The rule: a stored choice wins, otherwise the browser decides
+
+A visitor who has picked a language keeps it. A first-time visitor gets whatever their browser asks
+for. That is two branches, and the branch is on whether the cookie exists:
+
+```ts
+// A stored cookie choice wins; a first-time visitor gets their browser preference.
+const locale = cookieValue
+    ? i18n.resolveLocale(cookieValue)                 // honor the stored choice
+    : i18n.matchAcceptLanguage(acceptLanguageHeader); // else the visitor's preference
+```
+
+**Gate on the cookie's presence, not on the return value.** Both helpers already fall back to your
+`default` locale internally, and `resolveLocale` never returns `null` or `undefined`. Chain them with
+`??` or `||` and the right-hand side is dead code: a garbage cookie value would resolve to `default`
+and the header would never be read.
+
+## Narrowing an untrusted string with `resolveLocale`
+
+`i18n.resolveLocale(raw: string | undefined): L` takes any string you do not trust - a cookie, a query
+parameter, a value out of your database - and returns a locale that is guaranteed to be in your set.
+
+The match is exact, against the locale **code** (the key in your `locales` map), not against
+`htmlLang`. Anything unknown, empty or `undefined` returns `default`. There is no normalization and no
+casing tolerance, so `"EN"` is not `"en"`. For matching a URL segment instead, use
+`i18n.localeForSegment`, covered in [URL routing](/url-routing).
+
+```ts
+i18n.resolveLocale("nl");        // "nl"
+i18n.resolveLocale("fr");        // "en"  (unknown -> default)
+i18n.resolveLocale(undefined);   // "en"
+```
+
+## Matching the browser with `matchAcceptLanguage`
+
+`i18n.matchAcceptLanguage(header: string | null | undefined): L` negotiates a raw HTTP
+`Accept-Language` header down to one of your locales.
+
+It splits the header on commas and reads each entry's `q` weight (`q=` is matched
+case-insensitively, defaults to `1`, is clamped to the range `0..1`, and an unparseable weight counts
+as `0`). Entries weighted `0` or lower are dropped. The rest sort by weight, descending, with a stable
+sort - so tags of equal weight keep the order the browser sent them in.
+
+Then, for each tag in that ranking, two attempts: an exact case-insensitive match against a locale's
+`htmlLang` first, then a primary-subtag match. So `en-AU` finds a configured `en`, and a configured
+`en-GB` wins over a bare `en` locale when the header asks for `en-GB` specifically. If no tag matches
+anything, you get `default`.
+
+```ts
+// locales: en, nl
+i18n.matchAcceptLanguage("nl-NL,nl;q=0.9,en;q=0.8"); // "nl"
+i18n.matchAcceptLanguage("fr-FR,fr;q=0.9");          // "en"  (nothing matches -> default)
+i18n.matchAcceptLanguage(null);                      // "en"
+```
+
+## Reading the cookie is your job
+
+i18nkit stores the cookie **name**, not the cookie. `i18n.cookie` is that name, `"locale"` unless you
+set `cookie` on the config. The package ships no cookie parser: read the value with whatever your
+framework gives you and hand it to `resolveLocale`.
+
+The one place i18nkit writes the cookie is the React provider, when `setLocale` runs. It writes
+`path=/`, `max-age=31536000` (one year) and `samesite=lax`, and deliberately not `httpOnly`, because
+the client has to be able to set it. See [React](/react) for that flow.
+
+## A worked example: a Next.js Server Component
+
+```ts
+import { cookies, headers } from "next/headers";
+import { i18n } from "@/app/i18n";
+
+export async function activeLocale() {
+    const cookie = (await cookies()).get(i18n.cookie)?.value;
+    const accept = (await headers()).get("accept-language");
+    return cookie ? i18n.resolveLocale(cookie) : i18n.matchAcceptLanguage(accept);
+}
+```
+
+Nothing here is Next-specific below the surface. The core has no request object and no framework
+imports, so the same two calls work in Express, Hono, a Cloudflare Worker or edge middleware: get the
+cookie value, get the header string, pass them in.
+
+## When the URL already says it
+
+Once you add locale prefixes, the path decides the locale and detection moves to the edges: the very
+first visit, and any bare URL that carries no prefix. [URL routing](/url-routing) covers that, along
+with the middleware redirect that `"prefix-all"` requires.

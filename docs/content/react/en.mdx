@@ -1,0 +1,168 @@
+---
+title: "React"
+description: "Wire the React layer: the provider, the four hooks, the accessible LanguagePicker, flags, styling, and LocaleLink."
+tab: "Guide"
+group: "Guides"
+order: 5
+icon: "plug"
+keywords:
+    - react
+    - provider
+    - hooks
+    - language picker
+    - flags
+image: "/assets/docs/react/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+The React layer at `@daanvandenbergh/i18nkit/react` carries the active locale down your tree and gives
+you a picker to change it. It never imports `next/*`, so it works in any React setup: navigation on a
+locale change is your call, injected through the provider.
+
+Prerequisites: an `I18n` instance and at least one catalog ([Writing translations](/translations)), plus
+a way to resolve the active locale on the server ([Detecting the locale](/locale-detection)).
+
+## Wrap the app in the provider
+
+Pass the resolved locale and what to do when it changes. `react` and `react-dom` are optional peer
+dependencies (`>=18`), so install them if you have not already.
+
+```tsx
+// app/providers.tsx
+"use client";
+import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { I18nProvider } from "@daanvandenbergh/i18nkit/react";
+import "@daanvandenbergh/i18nkit/styles.css"; // for <LanguagePicker>
+import { i18n, type Locale } from "./i18n";
+
+export function Providers({ locale, children }: { locale: Locale; children: ReactNode }) {
+    const router = useRouter();
+    const pathname = usePathname();
+    return (
+        <I18nProvider
+            i18n={i18n}
+            locale={locale}
+            onChange={(next) => router.push(i18n.switchLocalePath(pathname, next))}
+        >
+            {children}
+        </I18nProvider>
+    );
+}
+```
+
+`locale` is the single source of truth for the render. `onChange` is optional, and the order of
+operations matters: calling the setter with the locale that is already active does nothing at all.
+Otherwise the provider writes the locale cookie first - `path=/`, `max-age` one year, `SameSite=Lax`,
+not `httpOnly` - and only then calls `onChange`. So by the time your navigation runs, a server resolver
+already sees the new value.
+
+## Navigate on change, or nothing happens
+
+This is the one thing worth getting right the first time.
+
+The discriminator is whether the locale appears in your URLs. If your app emits and routes
+locale-prefixed paths, the path wins over the cookie: your server reads the locale out of
+`/nl/pricing`, not out of the cookie, so `onChange` must navigate -
+`router.push(i18n.switchLocalePath(pathname, next))`. A bare `router.refresh()` reloads the same
+prefixed URL and changes nothing, which reads as "the picker is broken".
+
+If no URL carries a locale, there is nothing to navigate to, so a refresh is enough:
+`onChange={() => router.refresh()}` (or `location.reload()`) is correct, because the re-render
+re-reads the cookie. See [URL routing](/url-routing) for the strategies.
+
+## Read the locale with the hooks
+
+Four hooks, all of which throw `i18nkit: hooks must be used within <I18nProvider>.` outside a provider.
+
+```tsx
+"use client";
+import { useTranslator, LanguagePicker } from "@daanvandenbergh/i18nkit/react";
+import { TX } from "./customers/text";
+
+export function Header() {
+    const translate = useTranslator();
+    return (
+        <header>
+            <h1>{translate(TX.title)}</h1>
+            <LanguagePicker />
+        </header>
+    );
+}
+```
+
+- `useTranslator()` - a translator bound to the active locale.
+- `useLocale()` - the active locale code.
+- `useSetLocale()` - the setter described above.
+- `useI18n()` - the instance itself, for `i18n.list`, `i18n.localizeHref`, and the rest.
+
+A React context cannot be generic, so the locale union is erased to `string` inside it and each hook
+takes a type parameter that defaults to `string`. Pass your union for precision:
+`useLocale<Locale>()`, `useTranslator<Locale>()`.
+
+## Drop in the language picker
+
+`<LanguagePicker />` works with no props. It manages its own open state, dismisses on outside
+pointer-down or Escape (Escape returns focus to the trigger), carries the ARIA wiring, and lists each
+locale by its endonym label from your config.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `changeLanguageLabel` | `string` | `"Change language"` - the trigger's accessible name |
+| `headingLabel` | `string` | `"Language"`; pass `""` to hide the heading |
+| `renderFlag` | `(locale: string) => ReactNode` | none |
+| `className` | `string` | none; appended after `i18nkit-picker` |
+
+Translate `changeLanguageLabel` and `headingLabel` like any other string - they are user-facing.
+
+## Add flags
+
+Pass the shipped `localeFlag` renderer for the built-in set: 38 inline-SVG flags in one flat,
+rounded style, keyed so `en`, `pt-BR` and `de-CH` all resolve. A locale with no known flag renders
+nothing and falls back to its label, never a broken image.
+
+```tsx
+import { LanguagePicker, localeFlag } from "@daanvandenbergh/i18nkit/react";
+
+<LanguagePicker renderFlag={localeFlag} />;
+```
+
+They are inline SVG rather than emoji flags because emoji flags render as bare letters on
+Windows/Chrome. `Flag` is exported too, if you want one outside the picker:
+`<Flag code="nl" size={24} />`. Or supply your own renderer entirely:
+`renderFlag={(loc) => <MyFlag code={loc} />}`.
+
+## Restyle the picker
+
+The shipped stylesheet reads eight custom properties, each with a fallback, so you override only what
+you care about.
+
+```css
+:root {
+    --i18nkit-color-primary: #7c3aed;
+    --i18nkit-color-surface: #0b1220;
+    --i18nkit-color-ink: #e8edf5;
+}
+```
+
+The [API reference](/api-reference) lists all eight with their fallback values.
+
+For anything the properties do not cover, the class names are stable: `i18nkit-picker` and its
+`__trigger`, `__flag`, `__current`, `__caret`, `__panel`, `__heading`, `__item`, `__label`, `__check`
+elements.
+
+## Link between pages
+
+`<LocaleLink href="/pricing">` renders `/nl/pricing` when `nl` is active, following the instance's
+routing config. Write the href unprefixed and let the component do it.
+
+```tsx
+import NextLink from "next/link";
+import { LocaleLink } from "@daanvandenbergh/i18nkit/react";
+
+<LocaleLink href="/pricing">Pricing</LocaleLink>;
+<LocaleLink href="/pricing" as={NextLink}>Pricing</LocaleLink>;
+```
+
+It renders a plain `<a>` by default. Pass your framework's link via `as` and it receives the localized
+value as its `href`, with every other prop forwarded unchanged.

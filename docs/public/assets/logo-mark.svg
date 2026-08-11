@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="i18nkit">
+    <title>i18nkit</title>
+    <defs>
+        <!--
+         * The bare mark on the brand ramp, no tile behind it - for light surfaces that supply their
+         * own background (the docs navbar). The glyph is the same 文 the README hero badge carries.
+         * `userSpaceOnUse` so the ramp runs once across the whole mark; the default would restart it
+         * inside every stroke.
+         -->
+        <linearGradient id="i18n-mark" gradientUnits="userSpaceOnUse" x1="20" y1="11" x2="77" y2="83">
+            <stop offset="0" stop-color="#2563EB" />
+            <stop offset="55%" stop-color="#6D5DF6" />
+            <stop offset="100%" stop-color="#8A54D8" />
+        </linearGradient>
+    </defs>
+    <g stroke="url(#i18n-mark)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M48 11 L43 23" />
+        <path d="M20 32 H76" />
+        <path d="M60 36 C55 55, 40 72, 19 83" />
+        <path d="M37 36 C44 55, 58 72, 77 83" />
+    </g>
+</svg>

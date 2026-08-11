@@ -1,0 +1,133 @@
+---
+title: "Writing Translations"
+description: "Author catalogs, parameterized text and uniform strings with i18nkit, then resolve them to a string for a locale."
+tab: "Guide"
+group: "Guides"
+order: 1
+icon: "book"
+keywords:
+    - catalogs
+    - definetext
+    - uniform
+    - translator
+    - plurals
+image: "/assets/docs/translations/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+Every piece of user-facing copy in i18nkit is an object with one string per locale. This page covers
+how to author those objects and how to resolve one to a string. It assumes you already have an `I18n`
+instance exported from somewhere in your app, as set up in [Installation](/installation).
+
+## Define a catalog
+
+`i18n.defineTextCatalog` takes a plain object and returns it unchanged. All the enforcement is in the
+type constraint: every entry must carry a key for every locale in your set, or the call site fails to
+compile.
+
+```ts
+// app/customers/text.ts
+import { i18n } from "../i18n";
+
+export const TX = i18n.defineTextCatalog({
+    title: { en: "Customers", nl: "Klanten" },
+    empty: { en: "No customers yet", nl: "Nog geen klanten" },
+});
+```
+
+Catalogs are flat, one level deep: the type is `Record<string, ...>`, so nesting is not modelled. Two
+things replace it. Colocate a catalog with the code that uses it, one `text.ts` per feature folder, so
+each stays small. Inside a file, group with a key naming convention (`formSubmit`, `formCancel`) rather
+than a nested object.
+
+## Parameterize a string
+
+When a string interpolates a runtime value, write a builder function per locale instead of a static
+string:
+
+```ts
+// app/customers/text.ts
+export const TX = i18n.defineTextCatalog({
+    range: {
+        en: (from: number, to: number, total: number) => `Showing ${from}-${to} of ${total}`,
+        nl: (from: number, to: number, total: number) => `${from}-${to} van ${total} weergegeven`,
+    },
+});
+```
+
+The Dutch sentence ends with its verb, and the English one starts with it. A placeholder string with
+`{from}` markers cannot express that: it fixes one word order and every other language has to bend to
+it. A function per locale gives each language its own sentence.
+
+The second reason is typing. `defineTextCatalog` preserves the literal type of what you pass, so the
+argument tuple of each builder survives. `translate(TX.range, 1, 20)` is a compile error, and so is
+passing a string where a number belongs.
+
+## Define one standalone text
+
+For a single text that does not belong in a catalog, `i18n.defineText` gives the same coverage
+guarantee. It has two overloads, static and parameterized:
+
+```ts
+import { i18n } from "./i18n";
+
+export const settingsHeading = i18n.defineText({ en: "Settings", nl: "Instellingen" });
+
+export const greeting = i18n.defineText({
+    en: (name: string) => `Good morning, ${name}`,
+    nl: (name: string) => `Goedemorgen, ${name}`,
+});
+```
+
+## Reuse one string in every locale
+
+Some strings are the same in every language: brand names, product names, a symbol. `i18n.uniform`
+builds the entry for you from the instance's locale codes.
+
+```ts
+export const TX = i18n.defineTextCatalog({
+    brand: i18n.uniform("Acme"),
+});
+```
+
+Because the entry is built from the codes the instance knows, it is covered for every locale you have
+and every locale you add later. It never turns into a compile error. That is the point of it: it
+records "this needs no translation" as an explicit decision, in the source, where you can grep for it,
+instead of leaving the word hardcoded in a component where nothing can see it.
+
+## Resolve a text to a string
+
+`i18n.translator(locale)` returns a `Translator` bound to that locale. Call it with a static entry, or
+with a parameterized entry followed by that entry's arguments:
+
+```ts
+const translate = i18n.translator("nl");
+
+translate(TX.title);             // "Klanten"
+translate(TX.range, 1, 20, 137); // "1-20 van 137 weergegeven"
+```
+
+For a one-off lookup, `i18n.translate(TX.title, "nl")` skips the binding. It is static only: the
+method takes a `LanguageText`, and there is no parameterized overload on it, so a builder entry needs
+a translator. In React, `useTranslator()` hands you one already bound to the active locale, see
+[React](/react).
+
+## Handle plurals
+
+There is no built-in pluralization and no `Intl.PluralRules` inside the package. A plural is a
+parameterized text like any other, and for a two-form language that is one line per locale:
+
+```ts
+export const itemCount = i18n.defineText({
+    en: (n: number) => (n === 1 ? "1 item" : `${n} items`),
+    nl: (n: number) => (n === 1 ? "1 item" : `${n} items`),
+});
+```
+
+If a language needs more than two forms (Polish, Russian, Arabic), `Intl.PluralRules` is in the
+runtime: construct one for that locale and branch on `select(n)` inside that locale's builder only.
+The other locales stay one line.
+
+Every entry you write here is checked against the locale set you have today. Add a locale and the
+compiler turns each incomplete entry into an error, which is the worklist for the translation pass,
+see [Adding a language](/adding-a-locale).

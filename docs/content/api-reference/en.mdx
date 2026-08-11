@@ -1,0 +1,278 @@
+---
+title: "API Reference"
+description: "Every export, constructor option, method signature, type and default in i18nkit, plus the React layer and its CSS custom properties."
+tab: "Reference"
+group: "Reference"
+order: 1
+icon: "code"
+keywords:
+    - api
+    - reference
+    - i18n
+    - types
+    - react
+image: "/assets/docs/api-reference/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+Every public export of `@daanvandenbergh/i18nkit`, with exact signatures and defaults. For the
+narrative versions, see [Writing translations](/translations), [Detecting the locale](/locale-detection),
+[URL routing](/url-routing) and [React](/react).
+
+## Entry points
+
+| Specifier | Provides |
+| --- | --- |
+| `@daanvandenbergh/i18nkit` | The `I18n` class, `createTranslator`, `translate`, and the core types. Zero dependencies. |
+| `@daanvandenbergh/i18nkit/react` | `I18nProvider`, four hooks, `LanguagePicker`, `LocaleLink`, `Flag`, `localeFlag`. |
+| `@daanvandenbergh/i18nkit/styles.css` | The stylesheet for `LanguagePicker`. |
+
+The package is **ESM only** - there is no CommonJS build. `react` and `react-dom` are declared as
+**optional** peer dependencies at `>=18`; you need them only for the `/react` entry.
+
+## Exports
+
+The root entry exports these values:
+
+| Export | Kind | Signature |
+| --- | --- | --- |
+| `I18n` | class | `new I18n<L extends string>(config: I18nConfig<L>)` |
+| `createTranslator` | function | `createTranslator<L extends string>(locale: L): Translator<L>` |
+| `translate` | function | `translate<L extends string>(text: LanguageText<L>, locale: L): string` |
+
+And these types: `LocaleOf`, `I18nConfig`, `LanguageText`, `LanguageTextCatalog`, `LanguageTextFn`,
+`LocaleInfo`, `ResolvedLocale`, `Translator`. Their shapes are in [Types](#types).
+
+`@daanvandenbergh/i18nkit/react` exports `I18nProvider`, `useI18n`, `useLocale`, `useSetLocale`,
+`useTranslator`, `LanguagePicker`, `LocaleLink`, `Flag`, `localeFlag`, and the types
+`I18nProviderProps`, `LanguagePickerProps`, `LocaleLinkProps`.
+
+**Not exported.** `RoutingStrategy` and `RoutingConfig` exist in the source but the package entry does
+not re-export them, so `import type { RoutingStrategy } from "@daanvandenbergh/i18nkit"` fails. Write
+the strategy as a string literal (`strategy: "prefix-all"`) and read it back off the instance
+(`i18n.strategy`). The standalone `detect.*` and `routing.*` functions are likewise not exported; reach
+them as `I18n` methods.
+
+## `new I18n(config)`
+
+```ts
+import { I18n } from "@daanvandenbergh/i18nkit";
+
+export const i18n = new I18n({
+    locales: {
+        en: { label: "English",    htmlLang: "en", locale: "en-GB" },
+        nl: { label: "Nederlands", htmlLang: "nl", locale: "nl-NL" },
+    },
+    default: "en",
+});
+
+export type Locale = keyof typeof i18n.locales; // "en" | "nl"
+```
+
+The locale union `L` is inferred from the keys of `locales`.
+
+| Option | Type | Required | Default |
+| --- | --- | --- | --- |
+| `locales` | `Record<L, LocaleInfo>` | yes | - |
+| `default` | `NoInfer<L>` | yes | - |
+| `cookie` | `string` | no | `"locale"` |
+| `origin` | `string` | no | `undefined` |
+| `nonLocalizedPrefixes` | `readonly string[]` | no | `[]` |
+| `strategy` | `"prefix-except-default" \| "prefix-all"` | no | `"prefix-except-default"` |
+
+`locales` keys are preserved in insertion order, which is the order `list` and the picker use.
+`default` is the fallback for *detection* only - it is never a per-key translation fallback.
+`origin` has its trailing slashes stripped. `nonLocalizedPrefixes` matches segment-aware: `/api`
+excludes `/api` and `/api/x`, but not `/apis`.
+
+### `LocaleInfo`
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `label` | `string` | yes | - |
+| `htmlLang` | `string` | no | the locale's key in the `locales` map |
+| `locale` | `string` | no | `htmlLang`, then the key |
+
+`label` is the endonym shown in the picker. `htmlLang` feeds `<html lang>` and the URL prefix.
+`locale` feeds `Intl` formatting. So `en: { label: "English" }` is a complete entry.
+
+### Constructor errors
+
+| Condition | Message |
+| --- | --- |
+| `locales` is empty | ``I18n: `locales` must declare at least one locale.`` |
+| `default` is not a key of `locales` | `I18n: default locale "x" is not one of the configured locales (en, nl).` |
+| Two locales resolve to the same case-insensitive `htmlLang` | `I18n: locales "a" and "b" both resolve to htmlLang "en" (case-insensitive); each locale needs a distinct htmlLang.` |
+
+The third check exists because URL segments are matched case-insensitively, so a clash would leave one
+locale unreachable by URL.
+
+## Instance fields
+
+All read-only.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `locales` | `Record<L, ResolvedLocale<L>>` | Every locale, fully resolved, keyed by code. `keyof` it for the locale union. |
+| `list` | `readonly ResolvedLocale<L>[]` | The same entries in declaration order. |
+| `default` | `L` | The detection fallback locale. |
+| `cookie` | `string` | The cookie name the provider writes and your server reads. |
+| `origin` | `string \| undefined` | The site origin, trailing slashes stripped. |
+| `nonLocalizedPrefixes` | `readonly string[]` | Path prefixes that never take a locale prefix. |
+| `strategy` | `"prefix-except-default" \| "prefix-all"` | The URL scheme for the default locale. |
+
+## Methods
+
+### Authoring
+
+| Signature | Behaviour |
+| --- | --- |
+| `defineTextCatalog<const C extends LanguageTextCatalog<L>>(catalog: C): C` | Returns `catalog` unchanged. The constraint forces every entry to cover every locale in `L`. |
+| `defineText<const T extends LanguageText<L>>(text: T): T` | One static text, full coverage required. |
+| `defineText<A extends readonly unknown[]>(text: LanguageTextFn<L, A>): LanguageTextFn<L, A>` | One parameterized text; infers the builder's argument tuple. |
+| `uniform(value: string): LanguageText<L>` | Builds a text carrying `value` under every locale code. |
+
+All three `define*` calls are identity functions at runtime. There is no extraction step, no codegen,
+and no runtime validation - the enforcement is entirely the type constraint.
+
+### Resolving
+
+| Signature | Behaviour |
+| --- | --- |
+| `translator(locale: L): Translator<L>` | A translator bound to one locale, handling static and parameterized text. |
+| `translate(textValue: LanguageText<L>, locale: L): string` | One-off lookup. **Static text only** - there is no parameterized overload, unlike `Translator`. |
+| `resolveLocale(raw: string \| undefined): L` | Exact match of `raw` against a locale `code`, else `default`. Never returns nullish. |
+| `matchAcceptLanguage(header: string \| null \| undefined): L` | Ranks the header's tags by `q`, matches each against `htmlLang` (exact first, then primary subtag), else `default`. |
+
+Both detection methods fall back to `default` internally, so branch on the cookie's presence rather
+than chaining them with `??` or `||`.
+
+### Locale metadata
+
+| Signature | Behaviour |
+| --- | --- |
+| `htmlLangFor(locale: L): string` | The locale's `htmlLang`, in its configured BCP-47 casing (`"en-GB"`). |
+| `intlLocaleFor(locale: L): string` | The locale's full `Intl` locale (`"en-GB"`, `"nl-NL"`). |
+
+### Routing
+
+| Signature | Behaviour |
+| --- | --- |
+| `prefixFor(locale: L): string` | `""` for the default locale under `"prefix-except-default"`, otherwise `/` plus the lowercased `htmlLang` (`"/en-gb"`). |
+| `localeForSegment(segment: string): L \| null` | The locale a path segment denotes, matched case-insensitively against `htmlLang`. `null` when it is not a locale. |
+| `isLocalizedPath(pathname: string): boolean` | `false` when `pathname` equals or sits under a `nonLocalizedPrefixes` entry. |
+| `localizeHref(href: string, locale: L): string` | `/pricing` becomes `/nl/pricing`. Returns `href` untouched when the prefix is empty, `href` is not site-absolute (or starts with `//`), the path is non-localized, or the first segment is already a locale. `"/"` becomes `"/nl"`, never `"/nl/"`. |
+| `switchLocalePath(pathname: string, next: L): string` | Strips the current locale prefix, then applies `next`'s. |
+| `stripLocalePrefix(pathname: string): string` | Removes a leading locale segment regardless of strategy; `"/nl"` becomes `"/"`. |
+| `hreflangAlternates(path, locale): { canonical: string; languages: Record<string, string> }` | One entry per locale keyed by `htmlLang`, plus `x-default` pointing at the default locale's URL. **Throws when `origin` is unset.** |
+
+`hreflangAlternates` reduces `path` through `stripLocalePrefix` first, so passing an already-prefixed
+pathname is fine. A non-localized path yields a single canonical with only an `x-default`.
+
+## Types
+
+| Type | Shape |
+| --- | --- |
+| `LocaleInfo` | `{ label: string; htmlLang?: string; locale?: string }` |
+| `ResolvedLocale<L>` | `{ code: L; label: string; htmlLang: string; locale: string }` |
+| `I18nConfig<L>` | The constructor config; see [`new I18n(config)`](#new-i18nconfig). |
+| `LanguageText<L>` | `{ readonly [K in L]: string }` |
+| `LanguageTextFn<L, A>` | `{ readonly [K in L]: (...args: A) => string }` |
+| `LanguageTextCatalog<L>` | `Record<string, LanguageText<L> \| LanguageTextFn<L, readonly never[]>>` |
+| `Translator<L>` | Overloaded: `(text: LanguageText<L>) => string` and `<A extends readonly unknown[]>(text: LanguageTextFn<L, A>, ...args: A) => string` |
+| `LocaleOf<T>` | `T extends I18n<infer L> ? L : never` - recovers the locale union from an instance type |
+
+Catalogs are flat. `LanguageTextCatalog` is `Record<string, ...>` one level deep; nesting is not
+modelled.
+
+## React
+
+`I18nProvider`, `LanguagePicker` and `LocaleLink` carry the `"use client"` directive; the hooks run in
+that tree. `Flag` and `localeFlag` render in a client tree, and in a Server Component on React 19. Import
+`@daanvandenbergh/i18nkit/styles.css` once for the picker.
+
+### `I18nProvider`
+
+| Prop | Type | Required | Default |
+| --- | --- | --- | --- |
+| `i18n` | `I18n<L>` | yes | - |
+| `locale` | `L` | yes | - |
+| `onChange` | `(next: L) => void` | no | none |
+| `children` | `ReactNode` | yes | - |
+
+`setLocale(next)` no-ops when `next` already equals `locale`. Otherwise it writes
+`` `${i18n.cookie}=${encodeURIComponent(next)}; path=/; max-age=31536000; samesite=lax` `` (one year,
+site-wide, readable by client script) and *then* calls `onChange`. The context value is memoized on
+`[i18n, locale]`, and `onChange` is held in a ref so an inline prop does not bust that memo.
+
+### Hooks
+
+| Signature | Returns |
+| --- | --- |
+| `useI18n<L extends string = string>(): I18n<L>` | The provider's instance. |
+| `useLocale<L extends string = string>(): L` | The active locale. |
+| `useTranslator<L extends string = string>(): Translator<L>` | A translator bound to the active locale. |
+| `useSetLocale<L extends string = string>(): (next: L) => void` | The setter described above. |
+
+The type parameter defaults to `string`; pass your union for precision, e.g. `useLocale<Locale>()`.
+Every hook throws `i18nkit: hooks must be used within <I18nProvider>.` when used outside the provider.
+
+### `LanguagePicker`
+
+Every prop is optional, so `<LanguagePicker />` works.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `changeLanguageLabel` | `string` | `"Change language"` |
+| `headingLabel` | `string` | `"Language"` (pass `""` to hide it) |
+| `renderFlag` | `(locale: string) => ReactNode` | none |
+| `className` | `string` | none; appended after `i18nkit-picker` |
+
+It manages its own open state, dismisses on outside `pointerdown` or `Escape`, and returns focus to
+the trigger on `Escape` and on selection. Class names: `i18nkit-picker` plus the `__trigger`,
+`__flag`, `__current`, `__caret` (`--open`), `__panel`, `__heading`, `__item`, `__label` and `__check`
+elements.
+
+### `LocaleLink`
+
+`LocaleLinkProps` extends `Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">`.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `href` | `string` (required) | - |
+| `as` | `ElementType` | `"a"` |
+
+The href is passed through `i18n.localizeHref(href, locale)` using the context's active locale. Every
+other prop is forwarded to the rendered component.
+
+### Flags
+
+| Export | Signature | Behaviour |
+| --- | --- | --- |
+| `Flag` | `Flag(props: { code: string; size?: number }): ReactElement \| null` | Inline SVG chip, 4:3, `size` defaults to `20`. Returns `null` for a locale with no known flag. |
+| `localeFlag` | `localeFlag(locale: string): ReactNode` | A ready-made `renderFlag`: `<LanguagePicker renderFlag={localeFlag} />`. |
+
+An explicit region subtag wins when a flag exists for it (`pt-BR` yields Brazil), otherwise a
+language-to-region default applies. An unknown locale shows its label and no flag.
+
+### CSS custom properties
+
+Set these anywhere up the tree. Each has a built-in fallback.
+
+| Property | Fallback |
+| --- | --- |
+| `--i18nkit-color-primary` | `#2563eb` |
+| `--i18nkit-color-surface` | `#ffffff` |
+| `--i18nkit-color-ink` | `#1a1a1a` |
+| `--i18nkit-color-border` | `#e2e8f0` |
+| `--i18nkit-color-hover` | `#f4f7fa` |
+| `--i18nkit-color-muted` | `#64748b` on the caret, `#9aa5b5` on the panel heading |
+| `--i18nkit-color-ring` | `rgba(37, 99, 235, 0.18)` |
+| `--i18nkit-shadow` | `0 16px 38px rgba(11, 27, 54, 0.16)` |
+
+```css
+:root {
+    --i18nkit-color-primary: #7c3aed;
+    --i18nkit-color-surface: #0b1220;
+}
+```

@@ -54,13 +54,14 @@ any of them. Own it where the domain lives, not where it is first used.
 @node_modules/@daanvandenbergh/claudekit/rules/ts_modular_coding.md
 @node_modules/@daanvandenbergh/claudekit/skills/ts/audit-tests/claude-rules.md
 @node_modules/@daanvandenbergh/claudekit/rules/active_sessions.md
+@node_modules/@daanvandenbergh/scribekit/rules/docs_parity.md
 
 ## Agent Storage Directory
-Agent storage - memory, tasks/plans, active sessions, reports, assets - lives in `.agent/` at
+Agent storage - memory, tasks/plans, active sessions, reports, assets - lives in `.agentstore/` at
 the repo root. This overrides every imported rule and every skill (claudekit, scribekit, ...)
-wherever they say `claude/` - read and write `.agent/` instead: `.agent/memory/`,
-`.agent/tasks/plans.md`, `.agent/active_sessions.md`, `.agent/reports/`,
-`.agent/scribekit-hero/`, and so on. Never create a top-level `claude/` directory.
+wherever they say `claude/` - read and write `.agentstore/` instead: `.agentstore/memory/`,
+`.agentstore/tasks/plans.md`, `.agentstore/active_sessions.md`, `.agentstore/reports/`,
+`.agentstore/scribekit-hero/`, and so on. Never create a top-level `claude/` directory.
 (`.claude/` - with the dot - is Claude Code's own config directory and is unrelated.)
 
 ## Web Testing
@@ -71,5 +72,35 @@ wherever they say `claude/` - read and write `.agent/` instead: `.agent/memory/`
 ## Git
 - Never create new git branches unless asked, if you really feel it is needed, ask for permission first.
 
+## Documentation Site
+The public docs live in `docs/` - a Next.js App Router site built on `@daanvandenbergh/scribekit`,
+statically exported and published to GitHub Pages at https://daanvandenbergh.github.io/i18nkit
+by `.github/workflows/deploy.yml` on every push to `main`.
+
+```
+docs/
+  app/
+    layout.tsx                      # Root layout: scribekit styles.css + globals.css
+    icon.svg                        # Favicon: white app tile, the 文 mark on the brand ramp
+    (docs)/                         # Route group - the site IS the docs, pages serve at /<slug>
+      _docs.ts                      # The single configured Docs instance (tabs, groups, siteUrl)
+      _docs-chrome.tsx              # Navbar / tabs / sidebar / ⌘K search shell (client)
+      _docs-links.tsx               # BodyLink + NavLink: base-path-aware in-body links
+      _docs-image.tsx               # BaseImg: base-path-aware hero <img>
+  content/
+    hero.settings.js                # Shared hero gradient palette + brand (mirrors the README hero)
+    <slug>/en.mdx                   # One page per slug; front-matter drives the nav
+    <slug>/hero.js                  # That page's hero text, rendered by /scribekit-hero
+  public/assets/logo-mark.svg       # Navbar logo: the bare 文 mark, no tile
+```
+
+Brand: scribekit's blue -> violet -> purple ramp (`#2563EB` -> `#6D5DF6` -> `#8A54D8`), shared with
+scribekit and backupkit. The logo mark, the favicon tile, and the hero gradients are all coloured off
+it - keep them in step.
+
+Write and rewrite pages with `/scribekit-docs`; generate their heroes with `/scribekit-hero`; deploy
+config is `/scribekit-docs-github-pages`.
+
 ## Maintained README.md
-When making changes to the library, ensure the README.md instructions for how to use the library are still up to date.
+When making changes to the library, ensure the README.md instructions for how to use the library are
+still up to date - and the `docs/content/` pages with it (see the docs-parity rule above).

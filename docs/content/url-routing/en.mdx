@@ -1,0 +1,153 @@
+---
+title: "URL Routing"
+description: "Put the locale in the URL: pick a prefix strategy, build localized hrefs, emit hreflang, and write the redirect in your own middleware."
+tab: "Guide"
+group: "Guides"
+order: 4
+icon: "link"
+keywords:
+    - routing
+    - url prefix
+    - hreflang
+    - middleware
+    - canonical
+image: "/assets/docs/url-routing/hero.en.jpg"
+updated: "2026-08-11"
+---
+
+Use this page when the locale lives in the URL (`/nl/pricing`) rather than only in a cookie. You need
+an `I18n` instance already; if you also need to read the visitor's preference, that is
+[Detecting the locale](/locale-detection).
+
+## Pick a prefix strategy
+
+`strategy` decides where the default locale lives. It defaults to `"prefix-except-default"`: the
+default locale sits at bare URLs, every other locale under its prefix.
+
+```ts
+import { I18n } from "@daanvandenbergh/i18nkit";
+
+export const i18n = new I18n({
+    locales: {
+        en: { label: "English" },
+        nl: { label: "Nederlands" },
+    },
+    default: "en",
+    origin: "https://example.com",
+    nonLocalizedPrefixes: ["/api", "/assets"],
+});
+
+i18n.localizeHref("/pricing", "en"); // "/pricing"
+i18n.localizeHref("/pricing", "nl"); // "/nl/pricing"
+```
+
+Pass `strategy: "prefix-all"` instead and every locale is prefixed, so nothing lives at a bare URL:
+
+```ts
+const i18n = new I18n({ /* ...same... */ strategy: "prefix-all" });
+
+i18n.localizeHref("/pricing", "en"); // "/en/pricing"
+i18n.localizeHref("/pricing", "nl"); // "/nl/pricing"
+```
+
+## Build links and read paths
+
+Every routing helper is a method on the instance, so it already knows your locales, strategy and
+prefixes.
+
+```ts
+i18n.prefixFor("nl");                       // "/nl"   ("" for the default locale)
+i18n.localizeHref("/pricing", "nl");        // "/nl/pricing"
+i18n.switchLocalePath("/nl/pricing", "en"); // "/pricing"
+i18n.stripLocalePrefix("/nl/pricing");      // "/pricing"
+i18n.localeForSegment("nl");                // "nl"    (null when the segment is not a locale)
+i18n.isLocalizedPath("/api/session");       // false
+i18n.hreflangAlternates("/pricing", "nl");  // { canonical, languages }
+```
+
+`localizeHref` returns the href untouched when there is nothing to do: the default locale under
+`"prefix-except-default"`, an href that is not site-absolute (`mailto:`, `#hash`, `//cdn...`), a
+non-localized target, or a path that already starts with a locale segment. A query or hash survives
+(`/pricing?plan=pro` becomes `/nl/pricing?plan=pro`), and `"/"` becomes `"/nl"`, never `"/nl/"`.
+
+In React, `<LocaleLink>` calls `localizeHref` for you with the active locale - see [React](/react).
+
+## Keep API routes and assets unprefixed
+
+`nonLocalizedPrefixes` lists paths that never take a locale segment. Without it, a link builder or a
+language switch can send `/api/session` to `/nl/api/session`, which does not exist.
+
+The check is segment-aware: an entry `"/api"` excludes `/api` and `/api/x`, but leaves `/apis`
+localized. `localizeHref`, `switchLocalePath` and `hreflangAlternates` all honour it, and
+`isLocalizedPath` is exposed so your middleware can make the same call.
+
+## Handle locales with a region subtag
+
+A locale whose `htmlLang` carries a region or script subtag gets a lowercased URL prefix, which is
+the conventional casing for URLs:
+
+```ts
+const i18n = new I18n({
+    locales: { en: { label: "English", htmlLang: "en-GB" } },
+    default: "en",
+    strategy: "prefix-all",
+});
+
+i18n.prefixFor("en");   // "/en-gb"
+i18n.htmlLangFor("en"); // "en-GB"  - for <html lang> and hreflang keys
+```
+
+Segment parsing is case-insensitive, so inbound `/en-GB/pricing` and `/en-gb/pricing` both resolve to
+the same locale. Plain lowercase subtags (`en`, `nl`, `de`) are unaffected.
+
+## Emit canonical and hreflang tags
+
+`hreflangAlternates(path, locale)` returns `{ canonical, languages }`. `canonical` is the active
+locale's own URL; `languages` is keyed by each locale's `htmlLang` in its configured casing, plus an
+`x-default` entry pointing at the default locale's URL. Adding a locale extends every page
+automatically.
+
+```ts
+i18n.hreflangAlternates("/pricing", "nl");
+// {
+//     canonical: "https://example.com/nl/pricing",
+//     languages: {
+//         en: "https://example.com/pricing",
+//         nl: "https://example.com/nl/pricing",
+//         "x-default": "https://example.com/pricing",
+//     },
+// }
+```
+
+This method **throws when the instance has no `origin`** - alternates must be absolute URLs, and
+there is nothing to guess from. Set `origin` in the config (trailing slashes are stripped) before you
+call it. Passing an already-prefixed path is fine: it is reduced with `stripLocalePrefix` first.
+
+## Redirect in your own middleware
+
+i18nkit stays out of the request pipeline. The helpers are framework-agnostic, so you write the
+redirect yourself and compose it from the instance. Under `"prefix-all"` a bare URL maps to no locale,
+so middleware **must** redirect it or `/` returns a 404:
+
+```ts
+// Next.js middleware.ts - prefix-all
+import { NextResponse, type NextRequest } from "next/server";
+import { i18n } from "./i18n";
+
+export function middleware(req: NextRequest) {
+    const { pathname } = req.nextUrl;
+    if (!i18n.isLocalizedPath(pathname)) return NextResponse.next();  // /api/* -> pass through
+    if (i18n.localeForSegment(pathname.split("/")[1] ?? "")) return NextResponse.next(); // /en/x -> serve
+    // bare URL: detect (cookie, else Accept-Language) and redirect to that locale's prefix
+    const cookie = req.cookies.get(i18n.cookie)?.value;
+    const locale = cookie
+        ? i18n.resolveLocale(cookie)
+        : i18n.matchAcceptLanguage(req.headers.get("accept-language"));
+    const url = req.nextUrl.clone();
+    url.pathname = i18n.localizeHref(pathname, locale);
+    return NextResponse.redirect(url);
+}
+```
+
+Under `"prefix-except-default"` the same shape applies minus the redirect: a bare URL is already the
+default locale's real page, so serve it as-is and read the locale for SSR.

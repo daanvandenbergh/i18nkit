@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="i18nkit">
+    <title>i18nkit</title>
+    <defs>
+        <!--
+         * The app tile: white ground, the 文 mark on the brand ramp - the reverse of the bare
+         * logo-mark.svg the navbar uses. `userSpaceOnUse` so the ramp runs once across the whole
+         * mark; coordinates are in the mark's own 96 space (the group transform applies to them too).
+         -->
+        <linearGradient id="i18n-mark" gradientUnits="userSpaceOnUse" x1="20" y1="11" x2="77" y2="83">
+            <stop offset="0" stop-color="#2563EB" />
+            <stop offset="55%" stop-color="#6D5DF6" />
+            <stop offset="100%" stop-color="#8A54D8" />
+        </linearGradient>
+    </defs>
+    <rect width="128" height="128" rx="30" fill="#fff" />
+    <g transform="translate(23 23) scale(0.8542)">
+        <g stroke="url(#i18n-mark)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M48 11 L43 23" />
+            <path d="M20 32 H76" />
+            <path d="M60 36 C55 55, 40 72, 19 83" />
+            <path d="M37 36 C44 55, 58 72, 77 83" />
+        </g>
+    </g>
+</svg>
