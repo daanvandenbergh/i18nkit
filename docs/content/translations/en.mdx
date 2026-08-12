@@ -18,7 +18,7 @@ updated: "2026-08-11"
 Every piece of user-facing copy in i18nkit is an object with one entry per locale - a string, or a
 function that builds one. This page covers
 how to author those objects and how to resolve one to a string. It assumes you already have an `I18n`
-instance exported from somewhere in your app, as set up in [Installation](/installation).
+instance exported from somewhere in your app, as set up in [Installation](/installation/).
 
 ## Define a catalog
 
@@ -115,7 +115,7 @@ translate(TX.range, 1, 20, 137); // "1-20 van 137 weergegeven"
 For a one-off lookup, `i18n.translate(TX.title, "nl")` skips the binding. It is static only: the
 method takes a `LanguageText`, and there is no parameterized overload on it, so a builder entry needs
 a translator. In React, `useTranslator()` hands you one already bound to the active locale, see
-[React](/react).
+[React](/react/).
 
 ## Handle plurals
 
@@ -135,4 +135,4 @@ The other locales stay one line.
 
 Every entry you write here is checked against the locale set you have today. Add a locale and the
 compiler turns each incomplete entry into an error, which is the worklist for the translation pass,
-see [Adding a language](/adding-a-locale).
+see [Adding a language](/adding-a-locale/).

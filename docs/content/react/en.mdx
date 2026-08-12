@@ -19,8 +19,8 @@ The React layer at `@daanvandenbergh/i18nkit/react` carries the active locale do
 you a picker to change it. It never imports `next/*`, so it works in any React setup: navigation on a
 locale change is your call, injected through the provider.
 
-Prerequisites: an `I18n` instance and at least one catalog ([Writing translations](/translations)), plus
-a way to resolve the active locale on the server ([Detecting the locale](/locale-detection)).
+Prerequisites: an `I18n` instance and at least one catalog ([Writing translations](/translations/)), plus
+a way to resolve the active locale on the server ([Detecting the locale](/locale-detection/)).
 
 ## Wrap the app in the provider
 
@@ -67,7 +67,7 @@ prefixed URL and changes nothing, which reads as "the picker is broken".
 
 If no URL carries a locale, there is nothing to navigate to, so a refresh is enough:
 `onChange={() => router.refresh()}` (or `location.reload()`) is correct, because the re-render
-re-reads the cookie. See [URL routing](/url-routing) for the strategies.
+re-reads the cookie. See [URL routing](/url-routing/) for the strategies.
 
 ## Read the locale with the hooks
 
@@ -150,7 +150,7 @@ fallback is a light grey, so leaving it out puts pale text on a pale row:
 }
 ```
 
-The [API reference](/api-reference) lists all eight with their fallback values.
+The [API reference](/api-reference/) lists all eight with their fallback values.
 
 For anything the properties do not cover, the class names are stable: `i18nkit-picker` and its
 `__trigger`, `__flag`, `__current`, `__caret` (plus the `--open` modifier while the panel is open),

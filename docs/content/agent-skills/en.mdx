@@ -15,8 +15,8 @@ image: "/assets/docs/agent-skills/hero.en.jpg"
 updated: "2026-08-11"
 ---
 
-i18nkit ships two Claude Code skills, [`/i18nkit-sweep`](/i18nkit-sweep) and
-[`/i18nkit-add-locale`](/i18nkit-add-locale). This page explains why they exist and how to install
+i18nkit ships two Claude Code skills, [`/i18nkit-sweep`](/i18nkit-sweep/) and
+[`/i18nkit-add-locale`](/i18nkit-add-locale/). This page explains why they exist and how to install
 them. Each
 skill's own page documents its arguments and behaviour.
 
@@ -73,13 +73,13 @@ Two paths printed means Claude Code will pick up both commands. Restart Claude C
 
 | Skill | Use it when |
 | --- | --- |
-| [`/i18nkit-sweep`](/i18nkit-sweep) | You want to know which user-facing strings still bypass i18nkit. Report-only unless you pass `--fix`. |
-| [`/i18nkit-add-locale`](/i18nkit-add-locale) | You are adding a language and want every catalog entry, post body, and hardcoded locale list brought with it. |
+| [`/i18nkit-sweep`](/i18nkit-sweep/) | You want to know which user-facing strings still bypass i18nkit. Report-only unless you pass `--fix`. |
+| [`/i18nkit-add-locale`](/i18nkit-add-locale/) | You are adding a language and want every catalog entry, post body, and hardcoded locale list brought with it. |
 
 Run the sweep first when both apply. A literal that never entered a catalog is invisible to the
 compiler, so the add-locale worklist would skip it. The sweep reports those literals; wrap them (pass
 `--fix` for the high-confidence ones, and note that on a multi-locale project it leaves anything whose
 other translations are unknown for you) and the new locale then lands on all of them at once.
 
-[Adding a language](/adding-a-locale) walks the same workflow by hand if you would rather drive it
+[Adding a language](/adding-a-locale/) walks the same workflow by hand if you would rather drive it
 yourself.

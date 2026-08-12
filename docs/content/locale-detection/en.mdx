@@ -44,7 +44,7 @@ parameter, a value out of your database - and returns a locale that is guarantee
 The match is exact, against the locale **code** (the key in your `locales` map), not against
 `htmlLang`. Anything unknown, empty or `undefined` returns `default`. There is no normalization and no
 casing tolerance, so `"EN"` is not `"en"`. For matching a URL segment instead, use
-`i18n.localeForSegment`, covered in [URL routing](/url-routing).
+`i18n.localeForSegment`, covered in [URL routing](/url-routing/).
 
 ```ts
 i18n.resolveLocale("nl");        // "nl"
@@ -86,7 +86,7 @@ framework gives you and hand it to `resolveLocale`.
 
 The one place i18nkit writes the cookie is the React provider, when `setLocale` runs. It writes
 `path=/`, `max-age=31536000` (one year) and `samesite=lax`, and deliberately not `httpOnly`, because
-the client has to be able to set it. See [React](/react) for that flow.
+the client has to be able to set it. See [React](/react/) for that flow.
 
 ## Detect the locale in a Next.js Server Component
 
@@ -109,5 +109,5 @@ cookie value, get the header string, pass them in.
 ## When the URL already says it
 
 Once you add locale prefixes, the path decides the locale and detection moves to the edges: the very
-first visit, and any bare URL that carries no prefix. [URL routing](/url-routing) covers that, along
+first visit, and any bare URL that carries no prefix. [URL routing](/url-routing/) covers that, along
 with the middleware redirect that `"prefix-all"` requires.

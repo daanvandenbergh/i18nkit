@@ -20,8 +20,8 @@ page walks the whole loop: add the locale, run `tsc`, translate everything it fl
 green.
 
 **Before you start:** a project already on i18nkit - an `I18n` instance and at least one catalog. See
-[Installation](/installation) and [Writing Translations](/translations). If bare, unwrapped strings
-might still be scattered through the codebase, run [`/i18nkit-sweep`](/i18nkit-sweep) first: a string
+[Installation](/installation/) and [Writing Translations](/translations/). If bare, unwrapped strings
+might still be scattered through the codebase, run [`/i18nkit-sweep`](/i18nkit-sweep/) first: a string
 outside a catalog never enters `L`, so the compiler will not list it.
 
 ## Add the locale to your config
@@ -120,10 +120,10 @@ Three things live outside the type system, so check them by hand:
 - **Content outside catalogs.** MDX or CMS bodies with one file per language, and per-locale images.
   Nothing in a `.mdx` file is a catalog entry, so nothing there errors.
 - **The picker flag.** A new locale may have no built-in flag, in which case
-  [the picker](/react) shows its label alone. Pass `renderFlag` to supply one.
+  [the picker](/react/) shows its label alone. Pass `renderFlag` to supply one.
 
-[`/i18nkit-add-locale`](/i18nkit-add-locale) automates this loop - edit the config, drive the
+[`/i18nkit-add-locale`](/i18nkit-add-locale/) automates this loop - edit the config, drive the
 typecheck to green, translate every flagged entry - and then hunts the hardcoded locale lists for any
 project. For the content half it covers `@daanvandenbergh/scribekit` blogs specifically (post bodies
 plus each post's `hero.js` locale map); it reports and skips when scribekit is not detected, and hands
-long bodies to a human author. See [Claude Code skills](/agent-skills) to install it.
+long bodies to a human author. See [Claude Code skills](/agent-skills/) to install it.

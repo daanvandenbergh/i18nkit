@@ -33,7 +33,7 @@ ln -s "../../node_modules/@daanvandenbergh/i18nkit/skills/i18nkit-add-locale" ".
 
 Check the link resolves with `ls .claude/skills/i18nkit-add-locale/SKILL.md`, then restart Claude
 Code so it loads the command. See
-[Claude Code skills](/agent-skills) for the full setup, including the monorepo variant.
+[Claude Code skills](/agent-skills/) for the full setup, including the monorepo variant.
 
 ## Usage
 
@@ -89,7 +89,7 @@ Code so it loads the command. See
 ## When to use it
 
 Reach for `/i18nkit-add-locale` when the codebase is already wrapped and you want one more language
-in it. Run [/i18nkit-sweep](/i18nkit-sweep) first if bare, untranslated strings might still exist: a
+in it. Run [/i18nkit-sweep](/i18nkit-sweep/) first if bare, untranslated strings might still exist: a
 string outside a catalog does not move `L`, so the compiler cannot see it and the worklist would skip
 it. The skill is re-runnable - run it again for the same code later to pick up copy added since. On a
 re-run it detects the locale is already configured and skips straight to the typecheck worklist.
@@ -114,7 +114,7 @@ judgment call.
 
 ## Related
 
-- [Claude Code skills](/agent-skills) - both skills and the full install.
-- [/i18nkit-sweep](/i18nkit-sweep) - wrap bare strings first, so the compiler can see them.
-- [Adding a language](/adding-a-locale) - the same workflow done by hand.
-- [Writing translations](/translations) - catalogs, `defineText` and `uniform`.
+- [Claude Code skills](/agent-skills/) - both skills and the full install.
+- [/i18nkit-sweep](/i18nkit-sweep/) - wrap bare strings first, so the compiler can see them.
+- [Adding a language](/adding-a-locale/) - the same workflow done by hand.
+- [Writing translations](/translations/) - catalogs, `defineText` and `uniform`.

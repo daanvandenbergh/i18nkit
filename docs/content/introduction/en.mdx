@@ -51,7 +51,7 @@ i18n.defineTextCatalog({
 unchanged. All enforcement is the type constraint. There is no runtime validation, no build step, no
 codegen, no extraction pass, and no JSON files to keep in sync. Delete the type layer and the code
 still runs; keep it and the compiler is your coverage report. The full walkthrough lives in
-[Adding a language](/adding-a-locale).
+[Adding a language](/adding-a-locale/).
 
 ## What it deliberately does not do
 
@@ -59,7 +59,7 @@ Knowing the boundaries up front saves you looking for features that are not ther
 
 - **No interpolation DSL.** No ICU message syntax, no `%s`, no double-brace placeholders. A
   parameterized string is a builder function per locale, written with native template literals, so
-  each language keeps its own word order. See [Writing translations](/translations).
+  each language keeps its own word order. See [Writing translations](/translations/).
 - **No built-in pluralization.** A plural is a builder function that branches on the count, per locale.
   i18nkit compiles to ES2022, and `Intl.PluralRules` predates it, so reach for it if you want it.
 - **No key-level runtime fallback.** The types already guarantee a string for every locale, so there is
@@ -96,7 +96,7 @@ missing translation.
   `<LanguagePicker>` with optional `<Flag>` / `localeFlag` glyphs, and a router-agnostic
   `<LocaleLink>`. `react` and `react-dom` are optional peer dependencies at `>=18`, so the core costs
   you nothing if you skip it.
-- Two Claude Code skills, shipped in the published package: [`/i18nkit-sweep`](/i18nkit-sweep) finds
+- Two Claude Code skills, shipped in the published package: [`/i18nkit-sweep`](/i18nkit-sweep/) finds
   user-facing strings that bypass the type system, and
-  [`/i18nkit-add-locale`](/i18nkit-add-locale) adds a language and translates everything the compiler
-  flags. See [Claude Code skills](/agent-skills) to install them.
+  [`/i18nkit-add-locale`](/i18nkit-add-locale/) adds a language and translates everything the compiler
+  flags. See [Claude Code skills](/agent-skills/) to install them.
